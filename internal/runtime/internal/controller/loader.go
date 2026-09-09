@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/alloy/internal/component"
+	alertpipeline "github.com/grafana/alloy/internal/component/common/alertmanager"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -1010,6 +1011,7 @@ func splitPath(id string) (string, string) {
 }
 
 func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
+	alertReceiverType := reflect.TypeOf((*alertpipeline.Receiver)(nil)).Elem()
 	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
 	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
 	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()
@@ -1046,7 +1048,7 @@ func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 				// For most export types, the data flow edge has the opposite direction of the reference.
 				if found {
 					switch field.Type {
-					case otelConsumerType, appendableType, logsReceiverType, pyroscopeAppendableType:
+					case alertReceiverType, otelConsumerType, appendableType, logsReceiverType, pyroscopeAppendableType:
 						cn.AddDataFlowEdgeTo(tn.NodeID())
 					default:
 						tn.AddDataFlowEdgeTo(cn.NodeID())

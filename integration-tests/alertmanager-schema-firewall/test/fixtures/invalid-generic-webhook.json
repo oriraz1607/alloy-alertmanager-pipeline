@@ -1,0 +1,7 @@
+{
+  "receiver": "alloy",
+  "status": "firing",
+  "alerts": [
+    {"status": "firing", "labels": {"alertname": "MustNeverReachDestination"}}
+  ]
+}

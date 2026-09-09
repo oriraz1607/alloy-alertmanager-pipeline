@@ -1,0 +1,59 @@
+name: Build custom release files
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Optional embedded version (for example v1.20.0-alertmanager-pipeline.1)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Linux AMD64 files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Free runner disk space
+        run: |
+          echo "Disk space before cleanup:"
+          df -h /
+          sudo rm -rf \
+            /opt/ghc \
+            /opt/hostedtoolcache \
+            /usr/local/lib/android \
+            /usr/local/share/boost \
+            /usr/share/dotnet
+          docker system prune --all --force
+          echo "Disk space after cleanup:"
+          df -h /
+
+      - name: Build binary bundle and image archive
+        env:
+          CONTAINER_ENGINE: docker
+          VERSION: ${{ inputs.version }}
+        run: ./scripts/build-custom-release.sh
+
+      - name: Verify binary on Red Hat UBI 8
+        run: |
+          bundle="$(find dist-custom -maxdepth 1 -name 'alloy-*-rhel-amd64.tar.gz' -print -quit)"
+          mkdir -p /tmp/alloy-bundle
+          tar -xzf "$bundle" -C /tmp/alloy-bundle --strip-components=1
+          docker run --rm --platform linux/amd64 \
+            -v /tmp/alloy-bundle/alloy:/usr/local/bin/alloy:ro \
+            registry.access.redhat.com/ubi8/ubi-minimal:8.10 \
+            /usr/local/bin/alloy --version
+
+      - name: Upload release files
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: alloy-alertmanager-pipeline-${{ github.run_number }}
+          path: dist-custom/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

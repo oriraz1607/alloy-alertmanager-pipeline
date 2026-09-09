@@ -25,6 +25,11 @@ function debug(overrides: Partial<DebugData>): DebugData {
 }
 
 describe('overlayLiveMetrics', () => {
+  it('keeps Alertmanager live data on the Other signal', () => {
+    const result = overlayLiveMetrics(graph(), [debug({ type: DebugDataType.ALERTMANAGER_ALERT, rate: 3 })]);
+    expect(result.edges[0].signalMetrics).toEqual([{ signal: SignalKind.Other, value: 3 }]);
+  });
+
   it('groups multiple signal types on one edge into per-signal metrics', () => {
     const result = overlayLiveMetrics(graph(), [
       debug({ type: DebugDataType.PROMETHEUS_METRIC, rate: 100 }),

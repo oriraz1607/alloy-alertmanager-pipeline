@@ -1,0 +1,27 @@
+prometheus.alertmanager.receive "source" {
+	http {
+		listen_address = "0.0.0.0"
+		listen_port    = 5001
+	}
+
+	forward_to = [prometheus.alertmanager.write.destination.receiver]
+}
+
+prometheus.alertmanager.write "destination" {
+	endpoint {
+		url                = "http://schema-firewall:8080"
+		batch_size         = 1
+		batch_wait         = "0s"
+		min_backoff_period = "250ms"
+		max_backoff_period = "2s"
+		max_retries        = 30
+	}
+
+	queue_config {
+		capacity          = 100
+		block_on_overflow = true
+	}
+
+	refresh_interval      = "30s"
+	firing_alert_duration = "2m"
+}

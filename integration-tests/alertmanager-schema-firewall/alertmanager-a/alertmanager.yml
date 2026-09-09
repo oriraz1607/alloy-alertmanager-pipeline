@@ -1,0 +1,12 @@
+route:
+  receiver: alloy
+  group_by: [test_group]
+  group_wait: 1s
+  group_interval: 1s
+  repeat_interval: 1h
+
+receivers:
+  - name: alloy
+    webhook_configs:
+      - url: http://alloy:5001/webhook
+        send_resolved: true

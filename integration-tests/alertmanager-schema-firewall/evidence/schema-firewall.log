@@ -1,0 +1,43 @@
+[0m[schema-firewall] |[0m  * Serving Flask app 'app'
+[0m[schema-firewall] |[0m  * Debug mode: off
+[0m[schema-firewall] |[0m [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+[0m[schema-firewall] |[0m  * Running on all addresses (0.0.0.0)
+[0m[schema-firewall] |[0m  * Running on http://127.0.0.1:8080
+[0m[schema-firewall] |[0m  * Running on http://10.89.1.4:8080
+[0m[schema-firewall] |[0m [33mPress CTRL+C to quit[0m
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:22] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:25] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:28] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:31] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:34] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:37] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:40] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:43] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:46] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:49] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:49.650645+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:49.677483+00:00 DENY POST /api/v2/alerts reason=schema_validation_failed destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "[31m[1mPOST /api/v2/alerts HTTP/1.1[0m" 422 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:49.703723+00:00 DENY POST /webhook reason=method_or_path_not_allowed destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "[31m[1mPOST /webhook HTTP/1.1[0m" 403 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:50.731964+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:50] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:52] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:53.277290+00:00 ALLOW POST /api/v2/alerts reason=destination_unavailable destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:53] "[35m[1mPOST /api/v2/alerts HTTP/1.1[0m" 502 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:54] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.042637+00:00 ALLOW POST /api/v2/alerts reason=destination_unavailable destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "[35m[1mPOST /api/v2/alerts HTTP/1.1[0m" 502 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.547276+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.549288+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.551243+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:57] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:58.469183+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:58] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:58.471234+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:58] "POST /api/v2/alerts HTTP/1.1" 200 -

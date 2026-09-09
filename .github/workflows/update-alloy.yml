@@ -1,0 +1,172 @@
+name: Update Alloy to latest
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_branch:
+        description: Grafana Alloy branch to merge
+        required: true
+        default: main
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/update-alloy.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-alloy
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Merge, test, and update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Validate upstream branch input
+        env:
+          UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
+        run: |
+          if [[ ! "$UPSTREAM_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$UPSTREAM_BRANCH" == -* ]] || [[ "$UPSTREAM_BRANCH" == *..* ]]; then
+            echo "Invalid upstream branch: $UPSTREAM_BRANCH" >&2
+            exit 1
+          fi
+
+      - name: Fetch and integrate latest Grafana Alloy
+        id: merge
+        env:
+          UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags https://github.com/grafana/alloy.git \
+            "+refs/heads/${UPSTREAM_BRANCH}:refs/remotes/grafana/${UPSTREAM_BRANCH}"
+
+          upstream_sha="$(git rev-parse "refs/remotes/grafana/${UPSTREAM_BRANCH}")"
+          before_sha="$(git rev-parse HEAD)"
+
+          if [[ ! -f .alloy-upstream-base ]]; then
+            echo "Missing .alloy-upstream-base; refusing to guess the previous upstream base." >&2
+            exit 1
+          fi
+
+          previous_upstream_sha="$(tr -d '[:space:]' < .alloy-upstream-base)"
+          if [[ ! "$previous_upstream_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid commit in .alloy-upstream-base: $previous_upstream_sha" >&2
+            exit 1
+          fi
+          if ! git cat-file -e "${previous_upstream_sha}^{commit}" 2>/dev/null; then
+            echo "Recorded upstream base $previous_upstream_sha is not present in repository history." >&2
+            exit 1
+          fi
+
+          # Fast path while upstream still shares ancestry with this repository.
+          if git merge-base --is-ancestor "$previous_upstream_sha" "$upstream_sha" 2>/dev/null; then
+            git merge --no-edit "$upstream_sha"
+          else
+            # Grafana occasionally rewrites the upstream branch history. Reconstruct
+            # this repository as: latest upstream tree + our changes since the last
+            # recorded upstream base. This avoids an unsafe unrelated-history merge.
+            git diff --binary "$previous_upstream_sha" "$before_sha" -- \
+              . ':(exclude).github/workflows' ':(exclude).alloy-upstream-base' \
+              > /tmp/alloy-custom.patch
+
+            git reset --hard "$upstream_sha"
+
+            if [[ -s /tmp/alloy-custom.patch ]]; then
+              if ! git apply --3way --index /tmp/alloy-custom.patch; then
+                echo "Custom Alloy changes conflict with rewritten upstream history." >&2
+                echo "Resolve the conflicts manually rather than forcing an unrelated-history merge." >&2
+                git status --short >&2 || true
+                exit 1
+              fi
+            fi
+
+            # Restore the workflow directory exactly as it existed before the update.
+            # Removing it first is important: git checkout alone does not delete
+            # upstream-only workflow files, and GitHub rejects pushes that add or
+            # modify workflows when GITHUB_TOKEN lacks the workflows permission.
+            rm -rf .github/workflows
+            git checkout "$before_sha" -- .github/workflows
+            git add -A .github/workflows
+            git commit -m "chore: Rebase custom Alloy changes onto rewritten upstream"
+          fi
+
+          # Keep this repository's workflows exactly, including deletion of any
+          # workflow files that exist only in upstream Alloy.
+          rm -rf .github/workflows
+          git checkout "$before_sha" -- .github/workflows
+          git add -A .github/workflows
+
+          printf '%s\n' "$upstream_sha" > .alloy-upstream-base
+          git add .alloy-upstream-base
+
+          if ! git diff --cached --quiet; then
+            if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+              git commit --amend --no-edit
+            else
+              git commit -m "chore: Preserve custom workflows and upstream base"
+            fi
+          fi
+
+          after_sha="$(git rev-parse HEAD)"
+          {
+            echo "upstream_sha=$upstream_sha"
+            echo "previous_upstream_sha=$previous_upstream_sha"
+            echo "before_sha=$before_sha"
+            echo "after_sha=$after_sha"
+            if [[ "$before_sha" == "$after_sha" ]]; then
+              echo "changed=false"
+            else
+              echo "changed=true"
+            fi
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        if: steps.merge.outputs.changed == 'true'
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test custom Alertmanager components
+        if: steps.merge.outputs.changed == 'true'
+        run: |
+          go test -race -tags=nodocker \
+            ./internal/component/common/alertmanager \
+            ./internal/component/prometheus/alertmanager/...
+
+      - name: Push tested update
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          EXPECTED_HEAD: ${{ steps.merge.outputs.before_sha }}
+        run: git push origin "HEAD:main" --force-with-lease="refs/heads/main:${EXPECTED_HEAD}"
+
+      - name: Write summary
+        env:
+          CHANGED: ${{ steps.merge.outputs.changed }}
+          PREVIOUS_UPSTREAM_SHA: ${{ steps.merge.outputs.previous_upstream_sha }}
+          BEFORE_SHA: ${{ steps.merge.outputs.before_sha }}
+          AFTER_SHA: ${{ steps.merge.outputs.after_sha }}
+          UPSTREAM_SHA: ${{ steps.merge.outputs.upstream_sha }}
+        run: |
+          {
+            echo "## Alloy update"
+            echo
+            echo "- Changed: \`$CHANGED\`"
+            echo "- Previous repository commit: \`$BEFORE_SHA\`"
+            echo "- Previous Alloy base: \`$PREVIOUS_UPSTREAM_SHA\`"
+            echo "- Grafana Alloy commit: \`$UPSTREAM_SHA\`"
+            echo "- Resulting repository commit: \`$AFTER_SHA\`"
+          } >>"$GITHUB_STEP_SUMMARY"

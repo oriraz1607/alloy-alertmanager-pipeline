@@ -21,6 +21,8 @@ import (
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/parser"
 
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/receive"
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/write"
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents" // Include test components
 )
 
@@ -94,6 +96,30 @@ func TestLoader(t *testing.T) {
 	newLoaderOptions := func() controller.LoaderOptions {
 		return newLoaderOptionsWithStability(featuregate.StabilityPublicPreview)
 	}
+
+	t.Run("Alert receiver fanout data flow", func(t *testing.T) {
+		opts := newLoaderOptions()
+		opts.ComponentGlobals.EnableCommunityComps = true
+		l, err := controller.NewLoader(opts)
+		require.NoError(t, err)
+		config := `
+  prometheus.alertmanager.receive "input" {
+   forward_to = [prometheus.alertmanager.write.a.receiver, prometheus.alertmanager.write.b.receiver]
+  }
+  prometheus.alertmanager.write "a" {
+   endpoint { url = "http://localhost:9093" }
+  }
+  prometheus.alertmanager.write "b" {
+   endpoint { url = "http://localhost:9094" }
+  }
+  `
+		require.NoError(t, applyFromContent(t, l, []byte(config), nil, nil).ErrorOrNil())
+		source := l.Graph().GetByID("prometheus.alertmanager.receive.input").(controller.ComponentNode)
+		require.ElementsMatch(t, []string{"prometheus.alertmanager.write.a", "prometheus.alertmanager.write.b"}, source.GetDataFlowEdgesTo())
+		for _, id := range source.GetDataFlowEdgesTo() {
+			require.Empty(t, l.Graph().GetByID(id).(controller.ComponentNode).GetDataFlowEdgesTo())
+		}
+	})
 
 	t.Run("New Graph", func(t *testing.T) {
 		l, err := controller.NewLoader(newLoaderOptions())

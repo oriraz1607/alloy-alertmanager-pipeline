@@ -54,6 +54,17 @@ describe('AsyncStringifiedValue', () => {
       expect(container.textContent).toBe('"hello world"');
     });
 
+    it('renders multiline strings as readable content without escaped newlines or quotes', () => {
+      const template = '{\n  "labels": {\n    "severity": {{ to_json .Labels.severity }}\n  }\n}';
+      const stringValue: Value = { type: ValueType.STRING, value: template };
+
+      const { container } = render(<AsyncStringifiedValue value={stringValue} />);
+
+      expect(container.textContent).toBe(template);
+      expect(container.textContent).not.toContain('\\n');
+      expect(container.textContent).not.toContain('\\"');
+    });
+
     it('does not use the loading state for small strings', async () => {
       const stringValue: Value = { type: ValueType.STRING, value: 'hello world' };
 

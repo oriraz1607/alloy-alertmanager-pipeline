@@ -3,12 +3,13 @@ package livedebugging
 type DataType string
 
 const (
-	Target           DataType = "target"
-	PrometheusMetric DataType = "prometheus_metric"
-	LokiLog          DataType = "loki_log"
-	OtelMetric       DataType = "otel_metric"
-	OtelLog          DataType = "otel_log"
-	OtelTrace        DataType = "otel_trace"
+	AlertmanagerAlert DataType = "alertmanager_alert"
+	Target            DataType = "target"
+	PrometheusMetric  DataType = "prometheus_metric"
+	LokiLog           DataType = "loki_log"
+	OtelMetric        DataType = "otel_metric"
+	OtelLog           DataType = "otel_log"
+	OtelTrace         DataType = "otel_trace"
 )
 
 type DataOption func(Data) Data

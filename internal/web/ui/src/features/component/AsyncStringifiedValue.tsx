@@ -60,6 +60,12 @@ function isSimpleValue(value: Value): boolean {
  * Large complex values (that will exceed maxLength) are rendered asynchronously with a download link.
  */
 const AsyncStringifiedValue = ({ value, maxLength = 50000 }: AsyncStringifiedValueProps) => {
+  // Preserve the structure of templates, queries, and other multiline
+  // arguments instead of displaying them as one escaped string literal.
+  if (value.type === ValueType.STRING && /[\r\n]/.test(value.value)) {
+    return <>{value.value}</>;
+  }
+
   // Simple values can be rendered synchronously - they're fast and small
   if (isSimpleValue(value)) {
     return <>{alloyStringify(value)}</>;

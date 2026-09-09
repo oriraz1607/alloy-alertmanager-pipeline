@@ -169,6 +169,8 @@ em.informative {
 
   box-sizing: border-box;
   color: rgba(36, 41, 46, 0.75);
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 td.nameColumn {
@@ -182,4 +184,7 @@ td.nameColumn {
 .pre {
   margin: 0;
   font-size: 14px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }

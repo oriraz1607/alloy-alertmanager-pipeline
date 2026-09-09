@@ -1,0 +1,102 @@
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.628764045Z level=info msg="Alloy is starting"
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.628848004Z level=info msg="boringcrypto enabled" enabled=false
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.629080284Z level=info msg="memory is not limited, skipping" package=github.com/KimMachineGun/automemlimit/memlimit
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.629114459Z level=info msg="no peer discovery configured: both join and discover peers are empty" service=cluster
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.630460538Z level=info msg="starting complete graph evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.630521604Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=logging duration=53.661µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.630511164Z level=info msg="running usage stats reporter"
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.63062518Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=remotecfg duration=89.66µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.630664064Z level=info msg="applying non-TLS config to HTTP server" service=http
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.630671277Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=http duration=19.196µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.630682889Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=cluster duration=5.471µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.630689332Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=otel duration=611ns
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631075984Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=prometheus.alertmanager.write.destination duration=380.24µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631246247Z level=info msg="starting server" component_path=/ component_id=prometheus.alertmanager.receive.source
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631593344Z level=info msg="server listening on addresses" component_path=/ component_id=prometheus.alertmanager.receive.source http=[::]:5001 grpc=[::]:42305
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631666843Z level=info msg="started Alertmanager webhook receiver" component_path=/ component_id=prometheus.alertmanager.receive.source addr=[::]:5001 path=/webhook
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631673376Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=prometheus.alertmanager.receive.source duration=583.415µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631686861Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=tracing duration=4.328µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.63169693Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=livedebugging duration=5.14µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631701579Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=ui duration=992ns
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.6317071Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=labelstore duration=2.565µs
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631710185Z level=info msg="finished complete graph evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 duration=1.359555ms
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631751944Z level=info msg="scheduling loaded components and services" controller_id=""
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631843678Z level=info msg="starting cluster node" service=cluster peers_count=0 peers="" advertise_addr=127.0.0.1:12345 minimum_cluster_size=0 minimum_size_wait_timeout=0s
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.631887171Z level=info msg="{^_^} Alloy is running"
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.63191862Z level=info msg="peers changed" service=cluster peers_count=1 min_cluster_size=0 peers=efdc83fabbdb
+[0m[alloy]           |[0m ts=2026-09-03T16:50:22.632072672Z level=info msg="now listening for http traffic" service=http addr=0.0.0.0:12345
+[0m[alloy]           |[0m ts=2026-09-03T16:50:53.277836345Z level=warn msg="retrying Alertmanager request" component_path=/ component_id=prometheus.alertmanager.write.destination reason=status_5xx retry=1 backoff=250ms
+[0m[alloy]           |[0m ts=2026-09-03T16:50:56.043827531Z level=warn msg="retrying Alertmanager request" component_path=/ component_id=prometheus.alertmanager.write.destination reason=status_5xx retry=2 backoff=500ms
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.237Z level=INFO source=main.go:191 msg="Starting Alertmanager" version="(version=0.28.1, branch=HEAD, revision=b2099eaa2c9ebc25edb26517cb9c732738e93910)"
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.237Z level=INFO source=main.go:192 msg="Build context" build_context="(go=go1.23.7, platform=linux/amd64, user=root@fa3ca569dfe4, date=20250307-15:05:18, tags=netgo)"
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.238Z level=INFO source=cluster.go:185 msg="setting advertise address explicitly" component=cluster addr=10.89.1.3 port=9094
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.239Z level=INFO source=cluster.go:674 msg="Waiting for gossip to settle..." component=cluster interval=2s
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.257Z level=INFO source=coordinator.go:112 msg="Loading configuration file" component=configuration file=/etc/alertmanager/alertmanager.yml
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.258Z level=INFO source=coordinator.go:125 msg="Completed loading of configuration file" component=configuration file=/etc/alertmanager/alertmanager.yml
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.259Z level=INFO source=tls_config.go:347 msg="Listening on" address=[::]:9093
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:19.259Z level=INFO source=tls_config.go:350 msg="TLS is disabled." http2=false address=[::]:9093
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:21.239Z level=INFO source=cluster.go:699 msg="gossip not settled" component=cluster polls=0 before=0 now=1 elapsed=2.000645697s
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:29.243Z level=INFO source=cluster.go:691 msg="gossip settled; proceeding" component=cluster elapsed=10.004083631s
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:50.984Z level=INFO source=main.go:584 msg="Received SIGTERM, exiting gracefully..."
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.346Z level=INFO source=main.go:191 msg="Starting Alertmanager" version="(version=0.28.1, branch=HEAD, revision=b2099eaa2c9ebc25edb26517cb9c732738e93910)"
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.347Z level=INFO source=main.go:192 msg="Build context" build_context="(go=go1.23.7, platform=linux/amd64, user=root@fa3ca569dfe4, date=20250307-15:05:18, tags=netgo)"
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.347Z level=INFO source=cluster.go:185 msg="setting advertise address explicitly" component=cluster addr=10.89.1.6 port=9094
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.348Z level=INFO source=cluster.go:674 msg="Waiting for gossip to settle..." component=cluster interval=2s
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.365Z level=INFO source=coordinator.go:112 msg="Loading configuration file" component=configuration file=/etc/alertmanager/alertmanager.yml
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.365Z level=INFO source=coordinator.go:125 msg="Completed loading of configuration file" component=configuration file=/etc/alertmanager/alertmanager.yml
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.367Z level=INFO source=tls_config.go:347 msg="Listening on" address=[::]:9093
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:54.367Z level=INFO source=tls_config.go:350 msg="TLS is disabled." http2=false address=[::]:9093
+[0m[alertmanager-b]  |[0m time=2026-09-03T16:50:56.348Z level=INFO source=cluster.go:699 msg="gossip not settled" component=cluster polls=0 before=0 now=1 elapsed=2.000267139s
+[0m[schema-firewall] |[0m  * Serving Flask app 'app'
+[0m[schema-firewall] |[0m  * Debug mode: off
+[0m[schema-firewall] |[0m [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+[0m[schema-firewall] |[0m  * Running on all addresses (0.0.0.0)
+[0m[schema-firewall] |[0m  * Running on http://127.0.0.1:8080
+[0m[schema-firewall] |[0m  * Running on http://10.89.1.4:8080
+[0m[schema-firewall] |[0m [33mPress CTRL+C to quit[0m
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:22] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:25] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:28] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:31] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:34] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:37] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:40] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:43] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:46] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:49] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:49.650645+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:49.677483+00:00 DENY POST /api/v2/alerts reason=schema_validation_failed destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "[31m[1mPOST /api/v2/alerts HTTP/1.1[0m" 422 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:49.703723+00:00 DENY POST /webhook reason=method_or_path_not_allowed destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.4 - - [03/Sep/2026 16:50:49] "[31m[1mPOST /webhook HTTP/1.1[0m" 403 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:50.731964+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:50] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:52] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:53.277290+00:00 ALLOW POST /api/v2/alerts reason=destination_unavailable destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:53] "[35m[1mPOST /api/v2/alerts HTTP/1.1[0m" 502 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:54] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.042637+00:00 ALLOW POST /api/v2/alerts reason=destination_unavailable destination_status=-
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "[35m[1mPOST /api/v2/alerts HTTP/1.1[0m" 502 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.547276+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.549288+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:56.551243+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:56] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 127.0.0.1 - - [03/Sep/2026 16:50:57] "GET /health HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:58.469183+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:58] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[schema-firewall] |[0m 2026-09-03T16:50:58.471234+00:00 ALLOW POST /api/v2/alerts reason=schema_valid destination_status=200
+[0m[schema-firewall] |[0m 10.89.1.5 - - [03/Sep/2026 16:50:58] "POST /api/v2/alerts HTTP/1.1" 200 -
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.118Z level=INFO source=main.go:191 msg="Starting Alertmanager" version="(version=0.28.1, branch=HEAD, revision=b2099eaa2c9ebc25edb26517cb9c732738e93910)"
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.118Z level=INFO source=main.go:192 msg="Build context" build_context="(go=go1.23.7, platform=linux/amd64, user=root@fa3ca569dfe4, date=20250307-15:05:18, tags=netgo)"
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.119Z level=INFO source=cluster.go:185 msg="setting advertise address explicitly" component=cluster addr=10.89.1.2 port=9094
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.120Z level=INFO source=cluster.go:674 msg="Waiting for gossip to settle..." component=cluster interval=2s
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.137Z level=INFO source=coordinator.go:112 msg="Loading configuration file" component=configuration file=/etc/alertmanager/alertmanager.yml
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.137Z level=INFO source=coordinator.go:125 msg="Completed loading of configuration file" component=configuration file=/etc/alertmanager/alertmanager.yml
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.140Z level=INFO source=tls_config.go:347 msg="Listening on" address=[::]:9093
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:19.140Z level=INFO source=tls_config.go:350 msg="TLS is disabled." http2=false address=[::]:9093
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:21.121Z level=INFO source=cluster.go:699 msg="gossip not settled" component=cluster polls=0 before=0 now=1 elapsed=2.000968228s
+[0m[alertmanager-a]  |[0m time=2026-09-03T16:50:29.124Z level=INFO source=cluster.go:691 msg="gossip settled; proceeding" component=cluster elapsed=10.00418338s

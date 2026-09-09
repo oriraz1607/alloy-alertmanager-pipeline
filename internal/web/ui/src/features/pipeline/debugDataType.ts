@@ -6,6 +6,7 @@ export interface DebugData {
 }
 
 export enum DebugDataType {
+  ALERTMANAGER_ALERT = 'alertmanager_alert',
   UNDEFINED = 'undefined',
   TARGET = 'target',
   PROMETHEUS_METRIC = 'prometheus_metric',

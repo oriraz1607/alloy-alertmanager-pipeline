@@ -1,0 +1,8 @@
+route:
+  receiver: alloy-alert-pipeline
+
+receivers:
+  - name: alloy-alert-pipeline
+    webhook_configs:
+      - url: http://alloy:9095/webhook
+        send_resolved: true

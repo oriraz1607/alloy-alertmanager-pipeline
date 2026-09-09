@@ -1,0 +1,29 @@
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.628764045Z level=info msg="Alloy is starting"
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.628848004Z level=info msg="boringcrypto enabled" enabled=false
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.629080284Z level=info msg="memory is not limited, skipping" package=github.com/KimMachineGun/automemlimit/memlimit
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.629114459Z level=info msg="no peer discovery configured: both join and discover peers are empty" service=cluster
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.630460538Z level=info msg="starting complete graph evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.630521604Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=logging duration=53.661µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.630511164Z level=info msg="running usage stats reporter"
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.63062518Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=remotecfg duration=89.66µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.630664064Z level=info msg="applying non-TLS config to HTTP server" service=http
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.630671277Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=http duration=19.196µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.630682889Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=cluster duration=5.471µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.630689332Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=otel duration=611ns
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631075984Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=prometheus.alertmanager.write.destination duration=380.24µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631246247Z level=info msg="starting server" component_path=/ component_id=prometheus.alertmanager.receive.source
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631593344Z level=info msg="server listening on addresses" component_path=/ component_id=prometheus.alertmanager.receive.source http=[::]:5001 grpc=[::]:42305
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631666843Z level=info msg="started Alertmanager webhook receiver" component_path=/ component_id=prometheus.alertmanager.receive.source addr=[::]:5001 path=/webhook
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631673376Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=prometheus.alertmanager.receive.source duration=583.415µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631686861Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=tracing duration=4.328µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.63169693Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=livedebugging duration=5.14µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631701579Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=ui duration=992ns
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.6317071Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 node_id=labelstore duration=2.565µs
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631710185Z level=info msg="finished complete graph evaluation" controller_path=/ controller_id="" trace_id=f5affa9fe2c796ce40177e79c28a5476 duration=1.359555ms
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631751944Z level=info msg="scheduling loaded components and services" controller_id=""
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631843678Z level=info msg="starting cluster node" service=cluster peers_count=0 peers="" advertise_addr=127.0.0.1:12345 minimum_cluster_size=0 minimum_size_wait_timeout=0s
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.631887171Z level=info msg="{^_^} Alloy is running"
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.63191862Z level=info msg="peers changed" service=cluster peers_count=1 min_cluster_size=0 peers=efdc83fabbdb
+[0m[alloy] |[0m ts=2026-09-03T16:50:22.632072672Z level=info msg="now listening for http traffic" service=http addr=0.0.0.0:12345
+[0m[alloy] |[0m ts=2026-09-03T16:50:53.277836345Z level=warn msg="retrying Alertmanager request" component_path=/ component_id=prometheus.alertmanager.write.destination reason=status_5xx retry=1 backoff=250ms
+[0m[alloy] |[0m ts=2026-09-03T16:50:56.043827531Z level=warn msg="retrying Alertmanager request" component_path=/ component_id=prometheus.alertmanager.write.destination reason=status_5xx retry=2 backoff=500ms

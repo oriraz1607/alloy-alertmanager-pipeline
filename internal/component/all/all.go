@@ -133,6 +133,12 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"                 // Import otelcol.receiver.vcenter
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/zipkin"                  // Import otelcol.receiver.zipkin
 	_ "github.com/grafana/alloy/internal/component/otelcol/storage/file"                     // Import otelcol.storage.file
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/decode"           // Import prometheus.alertmanager.decode
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/http"             // Import prometheus.alertmanager.http
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/http_receive"     // Import prometheus.alertmanager.http_receive
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/receive"          // Import prometheus.alertmanager.receive
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/transform"        // Import prometheus.alertmanager.transform
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/write"            // Import prometheus.alertmanager.write
 	_ "github.com/grafana/alloy/internal/component/prometheus/echo"                          // Import prometheus.echo
 	_ "github.com/grafana/alloy/internal/component/prometheus/enrich"                        // Import prometheus.enrich
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/apache"               // Import prometheus.exporter.apache

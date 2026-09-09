@@ -1,0 +1,68 @@
+services:
+  alertmanager-a:
+    image: quay.io/prometheus/alertmanager:v0.28.1
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
+    volumes:
+      - ./alertmanager-a/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:19093:9093"
+    healthcheck:
+      test: ["CMD", "/bin/alertmanager", "--version"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  alloy:
+    image: docker.io/library/ubuntu:noble
+    entrypoint: ["/bin/alloy"]
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/tmp/alloy-data
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --feature.community-components.enabled=true
+    volumes:
+      - ../../build/alloy:/bin/alloy:ro
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+    ports:
+      - "127.0.0.1:15001:5001"
+      - "127.0.0.1:12345:12345"
+    depends_on:
+      schema-firewall:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/12345"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  schema-firewall:
+    build: ./schema-firewall
+    environment:
+      DESTINATION_URL: http://alertmanager-b:9093/api/v2/alerts
+      EVIDENCE_PATH: /evidence/firewall-last-accepted-body.json
+    volumes:
+      - ./evidence:/evidence
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      alertmanager-b:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  alertmanager-b:
+    image: quay.io/prometheus/alertmanager:v0.28.1
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
+    volumes:
+      - ./alertmanager-b/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:19094:9093"
+    healthcheck:
+      test: ["CMD", "/bin/alertmanager", "--version"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

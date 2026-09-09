@@ -2,6 +2,7 @@ build/
 data/
 data-alloy/
 dist/
+dist-custom/
 internal/web/ui/node_modules/
 internal/web/ui/dist/
 packaging/windows/LICENSE

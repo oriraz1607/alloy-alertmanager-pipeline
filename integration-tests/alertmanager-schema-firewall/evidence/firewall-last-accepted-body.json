@@ -1,0 +1,13 @@
+[
+  {
+    "endsAt": "2026-09-03T16:52:58.469Z",
+    "labels": {
+      "alertname": "AlloyForwardingTestB",
+      "instance": "integration-test",
+      "source": "alertmanager-a",
+      "test_group": "run-1788454217-42596-group",
+      "test_run_id": "run-1788454217-42596-group"
+    },
+    "startsAt": "2026-09-03T16:50:57.000Z"
+  }
+]
