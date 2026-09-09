@@ -8,11 +8,6 @@ on:
         required: true
         default: main
         type: string
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/update-alloy.yml
 
 permissions:
   contents: write
@@ -34,7 +29,7 @@ jobs:
 
       - name: Validate upstream branch input
         env:
-          UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
+          UPSTREAM_BRANCH: ${{ inputs.upstream_branch }}
         run: |
           if [[ ! "$UPSTREAM_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$UPSTREAM_BRANCH" == -* ]] || [[ "$UPSTREAM_BRANCH" == *..* ]]; then
             echo "Invalid upstream branch: $UPSTREAM_BRANCH" >&2
@@ -44,7 +39,7 @@ jobs:
       - name: Fetch and integrate latest Grafana Alloy
         id: merge
         env:
-          UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
+          UPSTREAM_BRANCH: ${{ inputs.upstream_branch }}
         run: |
           set -euo pipefail
 
