@@ -104,6 +104,50 @@ Preserve complete labels and annotations when they must survive the boundary,
 and map status explicitly to preserve firing and resolved state. Omitted fields
 can't be reconstructed; dropping labels can change alert identity and grouping.
 
+### Labels as a single JSON string
+
+For boundaries that only accept simple fields, use `to_string` in the sender's
+transform template and opt into string decoding on the receiver:
+
+```alloy
+// Alloy A: assign this transformer to prometheus.alertmanager.http.
+prometheus.alertmanager.transform "boundary" {
+  compact = true
+  template = `{
+    "labels": "{{ to_string .Labels }}",
+    "started": {{ to_json .StartsAt }}
+  }`
+}
+
+// Alloy B: assign this decoder to prometheus.alertmanager.http_receive.
+prometheus.alertmanager.decode "boundary" {
+  labels_from   = ".labels"
+  labels_format = "to_string"
+  starts_at     = ".started"
+}
+```
+
+`{{ to_string .Labels }}` and `{{ .Labels | to_string }}` are equivalent.
+For `alertname=test` and `severity=critical`, the labels field is a JSON string:
+
+```json
+{"labels":"{alertname:test,severity:critical}","started":"2026-09-07T14:00:00Z"}
+```
+
+Names are sorted for deterministic output. Reserved bytes use `%HH` escapes:
+commas, colons, braces, percent signs, quotes, backslashes, and control bytes.
+For example, `disk: almost, full` becomes `disk%3A almost%2C full` and decodes
+back unchanged. Spaces, Unicode, and empty values are preserved. Malformed
+strings and duplicate names fail decoding; existing label-name and typed-alert
+validation still apply. Explicit `labels` mappings override imported entries.
+
+Object decoding remains the default, and `to_json`, `default`, and `required`
+keep their existing behavior. These examples preserve labels and the required
+start time; include matching fields for other alert data you need to retain.
+Live Debugging shows the actual JSON string on the sender and the reconstructed
+labels on the decoder. Refer to the [format and escaping rules](docs/sources/reference/components/prometheus/prometheus.alertmanager.transform.md#string-labels-for-restricted-schemas)
+for details.
+
 ## Native Live Debugging
 
 All six Alertmanager components support Alloy's existing Live Debugging UI.

@@ -40,6 +40,7 @@ You can use the following arguments with `prometheus.alertmanager.decode`:
 | `ends_at`            | `string`      | Path to an RFC3339 alert end time.                              |         | no       |
 | `generator_url`      | `string`      | Path to a string generator URL.                                |         | no       |
 | `labels`             | `map(string)` | Label names mapped to required string field paths.             |         | no       |
+| `labels_format`      | `string`      | Format of `labels_from`: `object` or `to_string`. | `"object"` | no |
 | `labels_from`        | `string`      | Optional path to an object whose entries become labels.        |         | no       |
 | `source_fingerprint` | `string`      | Path to a string source fingerprint.                           |         | no       |
 | `status`             | `string`      | Path to an explicit `firing` or `resolved` value.               |         | no       |
@@ -48,7 +49,14 @@ Configure at least one of `labels_from` or `labels`.
 Paths support nested object lookup in the form `.foo`, `.foo.bar`, or `.foo.bar.baz`.
 Arrays, filters, expressions, query strings, and type coercion aren't supported.
 
-When `labels_from` or `annotations_from` exists, it must select a JSON object containing only string values.
+By default, when `labels_from` or `annotations_from` exists, it must select a JSON object containing only string values.
+Set `labels_format = "to_string"` to read `labels_from` as a JSON string serialized by the transform helper.
+An omitted or empty `labels_format` keeps object decoding. An explicit format requires `labels_from`.
+The format option only affects labels; annotations keep their existing object mapping.
+Refer to [String labels for restricted schemas](../prometheus.alertmanager.transform/#string-labels-for-restricted-schemas) for escaping rules and configurations for both sides.
+Malformed strings fail decoding before explicit overrides are applied.
+Imported names must satisfy the existing Prometheus label-name validation; no label names are hardcoded.
+An empty serialized map is valid syntax, but the final alert still requires nonempty labels.
 If an optional whole-map path is absent, the decoder imports an empty map.
 New entries in a selected object are imported without a configuration change.
 An explicit mapping path is required when configured and must select a string.

@@ -15,6 +15,7 @@ import (
 )
 
 type compiledMapping struct {
+	labelsFormat      string
 	labelsFrom        *fieldPath
 	annotationsFrom   *fieldPath
 	labels            map[string]fieldPath
@@ -52,7 +53,7 @@ func (d *mappingDecoder) Decode(body []byte) (alertpipeline.Alert, error) {
 		Labels:      model.LabelSet{},
 		Annotations: model.LabelSet{},
 	}}
-	if err := importStringMap(root, mapping.labelsFrom, "labels_from", alert.Labels); err != nil {
+	if err := importLabels(root, mapping, alert.Labels); err != nil {
 		return alertpipeline.Alert{}, err
 	}
 	if err := importStringMap(root, mapping.annotationsFrom, "annotations_from", alert.Annotations); err != nil {
@@ -102,8 +103,9 @@ func (d *mappingDecoder) update(mapping *compiledMapping) {
 
 func compileMapping(args Arguments) (*compiledMapping, error) {
 	result := &compiledMapping{
-		labels:      make(map[string]fieldPath, len(args.Labels)),
-		annotations: make(map[string]fieldPath, len(args.Annotations)),
+		labelsFormat: args.LabelsFormat,
+		labels:       make(map[string]fieldPath, len(args.Labels)),
+		annotations:  make(map[string]fieldPath, len(args.Annotations)),
 	}
 	var err error
 	if result.labelsFrom, err = optionalPath(args.LabelsFrom); err != nil {
@@ -259,4 +261,29 @@ func readTime(root map[string]any, path *fieldPath, name string) (time.Time, err
 		return time.Time{}, fmt.Errorf("%s path %s must contain an RFC3339 timestamp: %w", name, path.raw, err)
 	}
 	return value, nil
+}
+
+func importLabels(root map[string]any, mapping *compiledMapping, target model.LabelSet) error {
+	if mapping.labelsFormat != "to_string" {
+		return importStringMap(root, mapping.labelsFrom, "labels_from", target)
+	}
+	value, found, err := resolve(root, mapping.labelsFrom)
+	if err != nil || !found {
+		return err
+	}
+	text, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("labels_from path %s must select a JSON string", mapping.labelsFrom.raw)
+	}
+	labels, err := alertpipeline.LabelsFromString(text)
+	if err != nil {
+		return fmt.Errorf("labels_from path %s: %w", mapping.labelsFrom.raw, err)
+	}
+	for key, value := range labels {
+		if !model.LegacyValidation.IsValidLabelName(key) {
+			return fmt.Errorf("labels_from path %s contains invalid name %q", mapping.labelsFrom.raw, key)
+		}
+		target[model.LabelName(key)] = model.LabelValue(value)
+	}
+	return nil
 }

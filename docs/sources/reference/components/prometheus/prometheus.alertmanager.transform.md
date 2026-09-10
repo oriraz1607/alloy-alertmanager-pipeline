@@ -57,6 +57,7 @@ The template provides these small helper functions:
 
 | Function   | Description                                                               |
 | ---------- | ------------------------------------------------------------------------- |
+| `to_string` | Serializes a string map as sorted, percent-escaped `{name:value,...}` text. |
 | `to_json`  | Serializes a value with Go `encoding/json`, including safe string escaping. |
 | `default`  | Returns a fallback when the supplied value is empty.                      |
 | `required` | Stops rendering with the supplied message when the value is empty.        |
@@ -130,3 +131,70 @@ prometheus.alertmanager.transform "boundary" {
 
 Dropping labels can change alert identity, deduplication, and grouping behavior in downstream Alertmanager instances.
 Custom transformations aren't inherently lossless; preserve every field required by your downstream semantics.
+
+## String labels for restricted schemas
+
+Use `to_string` when your boundary requires labels in a JSON string:
+
+```alloy
+prometheus.alertmanager.transform "string_labels" {
+  compact = true
+  template = `{
+    "labels": "{{ to_string .Labels }}",
+    "started": {{ to_json .StartsAt }}
+  }`
+}
+```
+
+`{{ .Labels | to_string }}` is equivalent to `{{ to_string .Labels }}`.
+The helper accepts a string map, including `.Labels` or `.Annotations`.
+It returns text without surrounding JSON quotes. Put it inside quotes as shown,
+or use `{{ .Labels | to_string | to_json }}` without surrounding quotes.
+`to_json` continues to support nested JSON objects.
+
+The format is `{name:value,name:value}` with names sorted by Go string order.
+An empty map becomes `{}`. Empty values are preserved, and spaces aren't trimmed.
+The encoder escapes these bytes in both names and values using `%HH` with uppercase hexadecimal digits:
+
+| Byte | Escape |
+| ---- | ------ |
+| `%` | `%25` |
+| `,` | `%2C` |
+| `:` | `%3A` |
+| `{` and `}` | `%7B` and `%7D` |
+| Backslash | `%5C` |
+| Double quote | `%22` |
+| Control bytes `0x00`–`0x1F` and `0x7F` | Corresponding `%HH` |
+
+Spaces and valid Unicode remain unchanged. Invalid UTF-8 is rejected.
+The decoder accepts either case for hexadecimal digits, decodes escapes once,
+and rejects incomplete escapes, invalid hex, unescaped reserved bytes, duplicate names,
+and missing delimiters. It never returns a partial map on failure.
+
+For example, `alertname=test` and `severity=critical` become:
+
+```json
+{"labels":"{alertname:test,severity:critical}","started":"2026-09-07T14:00:00Z"}
+```
+
+The label `message=disk: almost, full` becomes `{message:disk%3A almost%2C full}`.
+Decoding restores `disk: almost, full` exactly.
+Live debugging shows the actual JSON string in the transform output.
+
+Configure the receiving decoder to reverse the string representation:
+
+```alloy
+prometheus.alertmanager.decode "string_labels" {
+  labels_from   = ".labels"
+  labels_format = "to_string"
+  starts_at     = ".started"
+}
+```
+
+Use `prometheus.alertmanager.transform.string_labels.transformer` as the sender's
+`transformer` and `prometheus.alertmanager.decode.string_labels.decoder` as the
+HTTP receiver's `decoder`. Both components require the community-components flag.
+The decoder output contains the original label map. Its live debugging output shows
+labels as an object, using the existing typed-alert display.
+These examples preserve labels and the required start time. Map other alert fields
+when you need to preserve annotations, end time, URL, or explicit status as well.

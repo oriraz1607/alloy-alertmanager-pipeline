@@ -172,3 +172,37 @@ func configuredDecoder(t *testing.T, args Arguments) *mappingDecoder {
 	decoder.update(mapping)
 	return decoder
 }
+
+func TestSerializedLabels(t *testing.T) {
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`labels_from = ".labels"
+labels_format = "to_string"
+starts_at = ".started"
+labels = { custom_override = ".override" }
+`), &args))
+	decoder := configuredDecoder(t, args)
+	alert, err := decoder.Decode([]byte(`{"labels":"{custom_override:old,new_custom_label:hello%2C world}","override":"new","started":"2026-09-07T14:00:00Z"}`))
+	require.NoError(t, err)
+	require.Equal(t, model.LabelSet{"custom_override": "new", "new_custom_label": "hello, world"}, alert.Labels)
+	strict := configuredDecoder(t, Arguments{LabelsFrom: ".labels", LabelsFormat: "to_string", StartsAt: ".started"})
+	for _, value := range []string{`"{severity}"`, `"{severity:critical"`, `"severity:critical}"`, `"{a:%}"`, `"{a:%2}"`, `"{a:%GG}"`, `"{a:x,a:y}"`, `"{bad-name:x}"`, `{}`, `null`, `5`, `"{}"`} {
+		_, err := strict.Decode([]byte(`{"labels":` + value + `,"started":"2026-09-07T14:00:00Z"}`))
+		require.Error(t, err, value)
+	}
+	// An empty or absent import can still be supplemented by explicit mappings.
+	for _, body := range []string{`{"labels":"{}","override":"new","started":"2026-09-07T14:00:00Z"}`, `{"override":"new","started":"2026-09-07T14:00:00Z"}`} {
+		alert, err := decoder.Decode([]byte(body))
+		require.NoError(t, err)
+		require.Equal(t, model.LabelSet{"custom_override": "new"}, alert.Labels)
+	}
+	for _, format := range []string{"", "object"} {
+		args.LabelsFormat = format
+		_, err := configuredDecoder(t, args).Decode([]byte(`{"labels":"{a:b}"}`))
+		require.ErrorContains(t, err, "must select a JSON object")
+	}
+	args.LabelsFormat = "unknown"
+	require.Error(t, args.Validate())
+	args.LabelsFormat = "to_string"
+	args.LabelsFrom = ""
+	require.Error(t, args.Validate())
+}

@@ -144,3 +144,13 @@ func testAlert() alertpipeline.Alert {
 		SourceFingerprint: "source",
 	}
 }
+
+func TestToStringPrefixAndPipeline(t *testing.T) {
+	for _, template := range []string{`{"labels":"{{ to_string .Labels }}"}`, `{"labels":"{{ .Labels | to_string }}"}`} {
+		alert := testAlert()
+		alert.Labels = model.LabelSet{"alertname": "test", "severity": "critical"}
+		body, err := configuredTransformer(t, template).Transform(alert)
+		require.NoError(t, err)
+		require.Equal(t, `{"labels":"{alertname:test,severity:critical}"}`, string(body))
+	}
+}

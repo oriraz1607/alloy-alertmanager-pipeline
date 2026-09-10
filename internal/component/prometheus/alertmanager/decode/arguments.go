@@ -10,6 +10,7 @@ import (
 
 // Arguments configures prometheus.alertmanager.decode.
 type Arguments struct {
+	LabelsFormat      string            `alloy:"labels_format,attr,optional"`
 	LabelsFrom        string            `alloy:"labels_from,attr,optional"`
 	AnnotationsFrom   string            `alloy:"annotations_from,attr,optional"`
 	Labels            map[string]string `alloy:"labels,attr,optional"`
@@ -23,6 +24,12 @@ type Arguments struct {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+	if args.LabelsFormat != "" && args.LabelsFormat != "object" && args.LabelsFormat != "to_string" {
+		return fmt.Errorf("labels_format must be object or to_string")
+	}
+	if args.LabelsFormat != "" && args.LabelsFrom == "" {
+		return fmt.Errorf("labels_format requires labels_from")
+	}
 	paths := map[string]string{
 		"labels_from":        args.LabelsFrom,
 		"annotations_from":   args.AnnotationsFrom,
