@@ -162,7 +162,7 @@ func labelMap(labels model.LabelSet) map[string]string {
 func cleanLabels(labels map[string]string) (map[string]string, error) {
 	clean := func(value string) string {
 		return strings.Map(func(r rune) rune {
-			if unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsMark(r) || unicode.Is(unicode.Zs, r) {
+			if unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsMark(r) {
 				return r
 			}
 			return -1

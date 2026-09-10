@@ -145,8 +145,8 @@ To remove special characters from label names and values before rendering, set
 `remove_special_characters = true` alongside `compact` in the transform block.
 For example, `Alert_Name=Node_Down!` becomes `AlertName=NodeDown`, and the labels
 string is `{AlertName:NodeDown,severity:critical}`. The default is `false`.
-The option preserves Unicode letters, numbers, combining marks, and spaces;
-it removes punctuation, symbols (including underscores and emoji), and controls.
+The option preserves Unicode letters, numbers, and combining marks;
+it removes whitespace, punctuation, symbols (including underscores and emoji), and controls.
 It cleans `.Labels` before template evaluation, including uses with `to_json`,
 and leaves annotations and the original alert unchanged. Serialization delimiters
 remain intact. Empty names or colliding cleaned names fail transformation.

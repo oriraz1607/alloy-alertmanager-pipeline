@@ -204,8 +204,8 @@ when you need to preserve annotations, end time, URL, or explicit status as well
 
 Set `remove_special_characters = true` alongside `compact` to clean `.Labels`
 before the template runs. The default is `false`, which preserves label data.
-The option retains Unicode letters, numbers, combining marks, and space separators.
-It deletes punctuation (including underscores), symbols (including emoji), and
+The option retains Unicode letters, numbers, and combining marks.
+It deletes whitespace (including spaces), punctuation (including underscores), symbols (including emoji), and
 control characters without replacements. It doesn't change annotations or the
 source alert. All template uses of `.Labels`, including `to_json`, see cleaned data;
 use cleaned names when accessing an individual label in the template.

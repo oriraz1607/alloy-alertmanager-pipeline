@@ -182,10 +182,10 @@ func TestRemoveSpecialCharacters(t *testing.T) {
 }
 
 func TestCleanLabels(t *testing.T) {
-	labels := map[string]string{"custom_name": "a_b!@#$%^&*()-+=[]{}:;,./?\\\"'`~\n\t\x00 😀 שלום 世界 e\u0301 123", "empty": "!!!"}
+	labels := map[string]string{"custom_name": "a_b!@#$%^&*()-+=[]{}:;,./?\\\"'`~\n\t\x00 😀 שלום\u00a0世界\u2003e\u0301 123", "empty": "!!!"}
 	cleaned, err := cleanLabels(labels)
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{"customname": "ab  שלום 世界 e\u0301 123", "empty": ""}, cleaned)
+	require.Equal(t, map[string]string{"customname": "abשלום世界e\u0301123", "empty": ""}, cleaned)
 	for _, labels := range []map[string]string{{"!!!": "x"}, {"a_b": "x", "ab": "y"}} {
 		_, err := cleanLabels(labels)
 		require.Error(t, err)
