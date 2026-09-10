@@ -62,7 +62,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if err != nil {
 		return fmt.Errorf("compiling alert JSON template: %w", err)
 	}
-	c.transformer.update(tmpl, newArgs.Compact)
+	c.transformer.update(tmpl, newArgs.Compact, newArgs.RemoveSpecialCharacters)
 	c.opts.OnStateChange(Exports{Transformer: c.transformer})
 	return nil
 }

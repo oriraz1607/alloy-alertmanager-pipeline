@@ -141,6 +141,17 @@ back unchanged. Spaces, Unicode, and empty values are preserved. Malformed
 strings and duplicate names fail decoding; existing label-name and typed-alert
 validation still apply. Explicit `labels` mappings override imported entries.
 
+To remove special characters from label names and values before rendering, set
+`remove_special_characters = true` alongside `compact` in the transform block.
+For example, `Alert_Name=Node_Down!` becomes `AlertName=NodeDown`, and the labels
+string is `{AlertName:NodeDown,severity:critical}`. The default is `false`.
+The option preserves Unicode letters, numbers, combining marks, and spaces;
+it removes punctuation, symbols (including underscores and emoji), and controls.
+It cleans `.Labels` before template evaluation, including uses with `to_json`,
+and leaves annotations and the original alert unchanged. Serialization delimiters
+remain intact. Empty names or colliding cleaned names fail transformation.
+Removed characters cannot be recovered by the decoder.
+
 Object decoding remains the default, and `to_json`, `default`, and `required`
 keep their existing behavior. These examples preserve labels and the required
 start time; include matching fields for other alert data you need to retain.

@@ -34,6 +34,7 @@ You can use the following arguments with `prometheus.alertmanager.transform`:
 
 | Name       | Type     | Description                                              | Default | Required |
 | ---------- | -------- | -------------------------------------------------------- | ------- | -------- |
+| `remove_special_characters` | `bool` | Remove punctuation, symbols, and controls from label names and values before template evaluation. | `false` | no |
 | `compact`  | `bool`   | Remove insignificant whitespace from the rendered JSON.  | `false` | no       |
 | `template` | `string` | Go text template that must render one valid JSON value.   |         | yes      |
 
@@ -198,3 +199,30 @@ The decoder output contains the original label map. Its live debugging output sh
 labels as an object, using the existing typed-alert display.
 These examples preserve labels and the required start time. Map other alert fields
 when you need to preserve annotations, end time, URL, or explicit status as well.
+
+### Remove special characters
+
+Set `remove_special_characters = true` alongside `compact` to clean `.Labels`
+before the template runs. The default is `false`, which preserves label data.
+The option retains Unicode letters, numbers, combining marks, and space separators.
+It deletes punctuation (including underscores), symbols (including emoji), and
+control characters without replacements. It doesn't change annotations or the
+source alert. All template uses of `.Labels`, including `to_json`, see cleaned data;
+use cleaned names when accessing an individual label in the template.
+
+For example, this template keeps the serialization delimiters:
+
+```alloy
+prometheus.alertmanager.transform "clean_labels" {
+  compact                   = true
+  remove_special_characters = true
+  template = `{"labels":"{{ to_string .Labels }}","started":{{ to_json .StartsAt }}}`
+}
+```
+
+The labels `severity=critical` and `Alert_Name=Node_Down!` produce
+`{"labels":"{AlertName:NodeDown,severity:critical}","started":"2026-09-07T14:00:00Z"}`
+for an alert starting at that time. The existing `labels_format = "to_string"`
+decoder reconstructs the cleaned map. Removed characters can't be recovered.
+Empty cleaned values are allowed; empty cleaned names or duplicate cleaned names
+reject the transformation instead of silently dropping labels.

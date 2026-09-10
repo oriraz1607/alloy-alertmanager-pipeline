@@ -72,7 +72,7 @@ func TestCompactJSON(t *testing.T) {
 }`)
 	require.NoError(t, err)
 	transformer := &templateTransformer{id: "compact"}
-	transformer.update(tmpl, true)
+	transformer.update(tmpl, true, false)
 
 	body, err := transformer.Transform(testAlert())
 	require.NoError(t, err)
@@ -100,14 +100,14 @@ func TestTemplateReloadChangesSubsequentOutput(t *testing.T) {
 	transformer := &templateTransformer{id: "reload"}
 	first, err := compileTemplate(`{"name": {{ to_json .Labels.alertname }}}`)
 	require.NoError(t, err)
-	transformer.update(first, false)
+	transformer.update(first, false, false)
 	body, err := transformer.Transform(testAlert())
 	require.NoError(t, err)
 	require.JSONEq(t, `{"name":"HighCPU"}`, string(body))
 
 	second, err := compileTemplate(`{"priority": {{ to_json .Labels.severity }}}`)
 	require.NoError(t, err)
-	transformer.update(second, true)
+	transformer.update(second, true, false)
 	body, err = transformer.Transform(testAlert())
 	require.NoError(t, err)
 	require.Equal(t, `{"priority":"critical"}`, string(body))
@@ -118,7 +118,7 @@ func configuredTransformer(t *testing.T, text string) *templateTransformer {
 	tmpl, err := compileTemplate(text)
 	require.NoError(t, err)
 	transformer := &templateTransformer{id: "test"}
-	transformer.update(tmpl, false)
+	transformer.update(tmpl, false, false)
 	return transformer
 }
 
@@ -152,5 +152,42 @@ func TestToStringPrefixAndPipeline(t *testing.T) {
 		body, err := configuredTransformer(t, template).Transform(alert)
 		require.NoError(t, err)
 		require.Equal(t, `{"labels":"{alertname:test,severity:critical}"}`, string(body))
+	}
+}
+
+func TestRemoveSpecialCharacters(t *testing.T) {
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte("template = `{\"labels\":\"{{ to_string .Labels }}\"}`\ncompact = true\nremove_special_characters = true\n"), &args))
+	require.True(t, args.RemoveSpecialCharacters)
+	var transformer alertpipeline.Transformer
+	c, err := New(component.Options{OnStateChange: func(exports component.Exports) { transformer = exports.(Exports).Transformer }}, args)
+	require.NoError(t, err)
+	alert := testAlert()
+	alert.Labels = model.LabelSet{"severity": "critical", "Alert_Name": "Node_Down!"}
+	original := alert.Clone()
+	body, err := transformer.Transform(alert)
+	require.NoError(t, err)
+	require.Equal(t, `{"labels":"{AlertName:NodeDown,severity:critical}"}`, string(body))
+	require.Equal(t, original, alert)
+	var wire map[string]string
+	require.NoError(t, json.Unmarshal(body, &wire))
+	decoded, err := alertpipeline.LabelsFromString(wire["labels"])
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"AlertName": "NodeDown", "severity": "critical"}, decoded)
+	args.RemoveSpecialCharacters = false
+	require.NoError(t, c.Update(args))
+	body, err = transformer.Transform(alert)
+	require.NoError(t, err)
+	require.Equal(t, `{"labels":"{Alert_Name:Node_Down!,severity:critical}"}`, string(body))
+}
+
+func TestCleanLabels(t *testing.T) {
+	labels := map[string]string{"custom_name": "a_b!@#$%^&*()-+=[]{}:;,./?\\\"'`~\n\t\x00 😀 שלום 世界 e\u0301 123", "empty": "!!!"}
+	cleaned, err := cleanLabels(labels)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"customname": "ab  שלום 世界 e\u0301 123", "empty": ""}, cleaned)
+	for _, labels := range []map[string]string{{"!!!": "x"}, {"a_b": "x", "ab": "y"}} {
+		_, err := cleanLabels(labels)
+		require.Error(t, err)
 	}
 }
