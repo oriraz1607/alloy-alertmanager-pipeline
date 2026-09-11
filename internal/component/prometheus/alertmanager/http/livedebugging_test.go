@@ -1,12 +1,14 @@
 package http
 
 import (
+	"context"
 	"io"
 	stdhttp "net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	alertpipeline "github.com/grafana/alloy/internal/component/common/alertmanager"
@@ -50,7 +52,19 @@ func TestLiveDebuggingAuthenticatedRetries(t *testing.T) {
 	log := testlivedebugging.NewLog()
 	require.NoError(t, svc.AddCallback(host, "test", livedebugging.ComponentID(id.String()), func(d livedebugging.Data) { log.Append(d.DataFunc()) }))
 	sender.component.debugDataPublisher = alertpipeline.NewDebugPublisher(component.Options{ID: id.String(), GetServiceData: func(string) (any, error) { return svc, nil }})
-	require.NoError(t, sender.component.sendWithRetry(t.Context(), payload))
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- sender.component.Run(ctx) }()
+	defer func() {
+		cancel()
+		require.NoError(t, <-done)
+	}()
+	require.NoError(t, sender.component.queue.enqueue(t.Context(), [][]byte{payload}, false))
+	require.Eventually(t, func() bool {
+		requestsMut.Lock()
+		defer requestsMut.Unlock()
+		return requests == 2
+	}, time.Second, 5*time.Millisecond)
 	requestsMut.Lock()
 	require.Equal(t, 2, requests)
 	requestsMut.Unlock()

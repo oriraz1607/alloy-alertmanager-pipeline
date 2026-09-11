@@ -93,6 +93,9 @@ It doesn't append `/alerts`, `/webhook`, or `/api/v2/alerts`.
 Every request uses `POST` and `Content-Type: application/json`.
 
 Connection failures, timeouts, HTTP `5xx`, and optionally HTTP `429` responses are retried with capped exponential backoff.
+An alert waiting for its next retry doesn't block other ready alerts in the queue.
+The sender continues processing ready alerts and retries the failed alert after its backoff expires.
+Requests remain sequential, so a slow active request can delay a retry beyond its scheduled time.
 Other HTTP `4xx` responses are terminal.
 After a terminal response or retry exhaustion, the component records the drop, reports unhealthy, and logs the delivery error.
 

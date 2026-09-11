@@ -148,6 +148,106 @@ func TestRetryAndPermanentStatusBehavior(t *testing.T) {
 	})
 }
 
+func TestRetryBackoffDoesNotBlockReadyAlerts(t *testing.T) {
+	var mut sync.Mutex
+	attempts := map[string]int{}
+	var requests []string
+	destination := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		name := body["name"].(string)
+
+		mut.Lock()
+		attempts[name]++
+		requests = append(requests, name)
+		attempt := attempts[name]
+		mut.Unlock()
+
+		if name == "One" && attempt < 3 {
+			w.WriteHeader(stdhttp.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(stdhttp.StatusOK)
+	}))
+	defer destination.Close()
+
+	args := testArguments(destination.URL, jsonTransformer("scheduled-retry"))
+	args.Endpoint.MinBackoff = 40 * time.Millisecond
+	args.Endpoint.MaxBackoff = 80 * time.Millisecond
+	args.Endpoint.MaxRetries = 2
+	sender := startSender(t, args)
+	require.NoError(t, sender.receiver.Send(t.Context(), []alertpipeline.Alert{
+		testAlert("One"),
+		testAlert("Two"),
+		testAlert("Three"),
+		testAlert("Four"),
+	}))
+
+	require.Eventually(t, func() bool {
+		mut.Lock()
+		defer mut.Unlock()
+		return len(requests) == 6
+	}, time.Second, 5*time.Millisecond)
+	mut.Lock()
+	defer mut.Unlock()
+	require.Equal(t, []string{"One", "Two", "Three", "Four", "One", "One"}, requests)
+}
+
+func TestRetryExhaustionDoesNotBlockFollowingAlert(t *testing.T) {
+	var mut sync.Mutex
+	var requests []string
+	destination := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		name := body["name"].(string)
+		mut.Lock()
+		requests = append(requests, name)
+		mut.Unlock()
+		if name == "One" {
+			w.WriteHeader(stdhttp.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(stdhttp.StatusOK)
+	}))
+	defer destination.Close()
+
+	args := testArguments(destination.URL, jsonTransformer("retry-exhaustion"))
+	args.Endpoint.MinBackoff = 20 * time.Millisecond
+	args.Endpoint.MaxBackoff = 40 * time.Millisecond
+	args.Endpoint.MaxRetries = 2
+	sender := startSender(t, args)
+	require.NoError(t, sender.receiver.Send(t.Context(), []alertpipeline.Alert{testAlert("One"), testAlert("Two")}))
+
+	require.Eventually(t, func() bool {
+		mut.Lock()
+		defer mut.Unlock()
+		return len(requests) == 4 && sender.component.CurrentHealth().Health == component.HealthTypeUnhealthy
+	}, time.Second, 5*time.Millisecond)
+	mut.Lock()
+	defer mut.Unlock()
+	require.Equal(t, []string{"One", "Two", "One", "One"}, requests)
+}
+
+func TestQueueCapacityIncludesInFlightAndDelayedPayloads(t *testing.T) {
+	queue := newPayloadQueue(1)
+	require.NoError(t, queue.enqueue(t.Context(), [][]byte{[]byte(`{"one":true}`)}, false))
+
+	item, _, ready := queue.takeReady(time.Now())
+	require.True(t, ready)
+	require.Equal(t, 1, queue.len())
+	require.ErrorIs(t, queue.enqueue(t.Context(), [][]byte{[]byte(`{"two":true}`)}, false), errQueueFull)
+
+	queue.retry(item, time.Now().Add(time.Hour))
+	require.Equal(t, 1, queue.len())
+	require.ErrorIs(t, queue.enqueue(t.Context(), [][]byte{[]byte(`{"two":true}`)}, false), errQueueFull)
+
+	_, _, ready = queue.takeReady(time.Now().Add(2 * time.Hour))
+	require.True(t, ready)
+	queue.complete()
+	require.Zero(t, queue.len())
+	require.NoError(t, queue.enqueue(t.Context(), [][]byte{[]byte(`{"two":true}`)}, false))
+}
+
 func TestConfigurationReloadChangesSubsequentBodies(t *testing.T) {
 	bodies := make(chan map[string]any, 2)
 	destination := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {

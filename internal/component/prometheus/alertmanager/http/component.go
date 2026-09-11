@@ -106,19 +106,17 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	c.setHealth(component.HealthTypeHealthy, "component is ready to accept alerts")
 	for {
-		if c.queue.len() > 0 {
-			body := c.queue.dequeue()
-			c.updateQueueMetric()
-			if err := c.deliver(ctx, body); err != nil && ctx.Err() != nil {
-				c.queue.prepend(body)
+		item, wait, ready := c.queue.takeReady(time.Now())
+		if ready {
+			if c.attemptDelivery(ctx, item) {
+				c.queue.retry(item, time.Time{})
+				c.updateQueueMetric()
 				return c.drain()
 			}
 			continue
 		}
-		select {
-		case <-ctx.Done():
+		if !c.waitForQueue(ctx, wait) {
 			return c.drain()
-		case <-c.queue.changed:
 		}
 	}
 }
@@ -210,54 +208,46 @@ func (c *Component) receive(ctx context.Context, alerts []alertpipeline.Alert) e
 	return nil
 }
 
-func (c *Component) deliver(ctx context.Context, body []byte) error {
-	err := c.sendWithRetry(ctx, body)
-	if err != nil {
-		if ctx.Err() == nil {
-			c.metrics.droppedAlerts.WithLabelValues("delivery_failed").Inc()
-			c.setHealth(component.HealthTypeUnhealthy, "failed to deliver transformed alert: "+err.Error())
-			c.opts.Logger.Error("failed to deliver transformed alert", "err", err)
-		}
-		return err
+// attemptDelivery sends one request. Retryable failures are scheduled back into
+// the queue so ready alerts can continue while this alert is backing off. It
+// returns true only when the caller's context interrupted the active request.
+func (c *Component) attemptDelivery(ctx context.Context, item queuedPayload) bool {
+	state := c.getDeliveryState()
+	c.metrics.httpRequests.Inc()
+	duration, err := alertpipeline.PostJSON(ctx, state.client, state.endpointURL, item.body, nil, state.timeout, alertpipeline.HTTPDebug{Publisher: c.debugDataPublisher, Retry: item.retries, OmitResponseBody: state.omitDebugResponseBody, ConfiguredHeaders: state.debugHeaderNames})
+	c.metrics.httpDuration.Observe(duration.Seconds())
+	if err == nil {
+		c.queue.complete()
+		c.updateQueueMetric()
+		c.debugDataPublisher.JSON("[OUT] DELIVERED", 1, item.body)
+		c.metrics.sentAlerts.Inc()
+		c.setHealth(component.HealthTypeHealthy, "component is ready to accept alerts")
+		return false
 	}
-	c.debugDataPublisher.JSON("[OUT] DELIVERED", 1, body)
-	c.metrics.sentAlerts.Inc()
-	c.setHealth(component.HealthTypeHealthy, "component is ready to accept alerts")
-	return nil
-}
+	if ctx.Err() != nil {
+		return true
+	}
 
-func (c *Component) sendWithRetry(ctx context.Context, body []byte) error {
-	retries := 0
-	for {
-		state := c.getDeliveryState()
-		c.metrics.httpRequests.Inc()
-		duration, err := alertpipeline.PostJSON(ctx, state.client, state.endpointURL, body, nil, state.timeout, alertpipeline.HTTPDebug{Publisher: c.debugDataPublisher, Retry: retries, OmitResponseBody: state.omitDebugResponseBody, ConfiguredHeaders: state.debugHeaderNames})
-		c.metrics.httpDuration.Observe(duration.Seconds())
-		if err == nil {
-			return nil
-		}
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		failure, ok := err.(*alertpipeline.HTTPFailure)
-		if ok {
-			c.metrics.httpFailures.WithLabelValues(string(failure.Reason)).Inc()
-		}
-		if !ok || !alertpipeline.IsRetryableHTTP(failure, state.retryOnHTTP429) || (state.maxRetries > 0 && retries >= state.maxRetries) {
-			return err
-		}
-		delay := alertpipeline.HTTPRetryDelay(state.minBackoff, state.maxBackoff, retries)
-		retries++
-		c.metrics.retries.Inc()
-		c.opts.Logger.Warn("retrying transformed alert request", "reason", failure.Reason, "retry", retries, "backoff", delay)
-		timer := time.NewTimer(delay)
-		select {
-		case <-ctx.Done():
-			stopTimer(timer)
-			return ctx.Err()
-		case <-timer.C:
-		}
+	failure, ok := err.(*alertpipeline.HTTPFailure)
+	if ok {
+		c.metrics.httpFailures.WithLabelValues(string(failure.Reason)).Inc()
 	}
+	if ok && alertpipeline.IsRetryableHTTP(failure, state.retryOnHTTP429) && (state.maxRetries == 0 || item.retries < state.maxRetries) {
+		delay := alertpipeline.HTTPRetryDelay(state.minBackoff, state.maxBackoff, item.retries)
+		item.retries++
+		c.metrics.retries.Inc()
+		c.opts.Logger.Warn("retrying transformed alert request", "reason", failure.Reason, "retry", item.retries, "backoff", delay)
+		c.queue.retry(item, time.Now().Add(delay))
+		c.updateQueueMetric()
+		return false
+	}
+
+	c.queue.complete()
+	c.updateQueueMetric()
+	c.metrics.droppedAlerts.WithLabelValues("delivery_failed").Inc()
+	c.setHealth(component.HealthTypeUnhealthy, "failed to deliver transformed alert: "+err.Error())
+	c.opts.Logger.Error("failed to deliver transformed alert", "err", err)
+	return false
 }
 
 func (c *Component) drain() error {
@@ -266,17 +256,18 @@ func (c *Component) drain() error {
 	drainCtx, cancel := context.WithTimeout(context.Background(), state.drainTimeout)
 	defer cancel()
 	for c.queue.len() > 0 {
-		body := c.queue.dequeue()
-		c.updateQueueMetric()
-		if err := c.deliver(drainCtx, body); err != nil && drainCtx.Err() != nil {
-			c.metrics.droppedAlerts.WithLabelValues("shutdown").Inc()
+		item, wait, ready := c.queue.takeReady(time.Now())
+		if ready {
+			if c.attemptDelivery(drainCtx, item) {
+				break
+			}
+			continue
+		}
+		if !c.waitForQueue(drainCtx, wait) {
 			break
 		}
 	}
-	remaining := c.queue.len()
-	for c.queue.len() > 0 {
-		_ = c.queue.dequeue()
-	}
+	remaining := c.queue.discard()
 	if remaining > 0 {
 		c.metrics.droppedAlerts.WithLabelValues("shutdown").Add(float64(remaining))
 	}
@@ -286,6 +277,27 @@ func (c *Component) drain() error {
 	}
 	c.setHealth(component.HealthTypeUnknown, "component has stopped")
 	return nil
+}
+
+func (c *Component) waitForQueue(ctx context.Context, wait time.Duration) bool {
+	if wait <= 0 {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-c.queue.changed:
+			return true
+		}
+	}
+	timer := time.NewTimer(wait)
+	defer stopTimer(timer)
+	select {
+	case <-ctx.Done():
+		return false
+	case <-c.queue.changed:
+		return true
+	case <-timer.C:
+		return true
+	}
 }
 
 func stopTimer(timer *time.Timer) {
