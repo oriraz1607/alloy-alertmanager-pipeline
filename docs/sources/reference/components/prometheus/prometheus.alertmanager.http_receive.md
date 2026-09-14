@@ -79,7 +79,7 @@ Set `listen_address` and `listen_port` inside the `http` block.
 
 ### `tls`
 
-{{< docs/shared lookup="reference/components/server-tls-config.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
