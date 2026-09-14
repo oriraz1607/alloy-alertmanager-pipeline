@@ -34,9 +34,9 @@ prometheus.alertmanager.http "<LABEL>" {
 
 You can use the following argument with `prometheus.alertmanager.http`:
 
-| Name          | Type                        | Description                                         | Default | Required |
-| ------------- | --------------------------- | --------------------------------------------------- | ------- | -------- |
-| `transformer` | `AlertTransformer` | Transformer that creates one JSON body per alert.   |         | yes      |
+| Name          | Type               | Description                                       | Default | Required |
+| ------------- | ------------------ | ------------------------------------------------- | ------- | -------- |
+| `transformer` | `AlertTransformer` | Transformer that creates one JSON body per alert. |         | yes      |
 
 The component validates and transforms a complete upstream collection before it admits any body to the queue.
 If one transformation fails or returns invalid JSON, the complete collection is rejected and no request is queued.
@@ -48,14 +48,14 @@ You can use the following blocks with `prometheus.alertmanager.http`:
 
 {{< docs/alloy-config >}}
 
-| Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
-| [`endpoint`][endpoint]                             | Configure the JSON HTTP destination.         | yes      |
-| `endpoint` > [`authorization`][authorization]      | Configure generic authorization.             | no       |
-| `endpoint` > [`basic_auth`][basic_auth]            | Configure basic authentication.              | no       |
-| `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 authentication.           | no       |
-| `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS for the OAuth 2.0 endpoint.     | no       |
-| `endpoint` > [`tls_config`][tls_config]            | Configure TLS for the destination.            | no       |
+| Block                                              | Description                                   | Required |
+| -------------------------------------------------- | --------------------------------------------- | -------- |
+| [`endpoint`][endpoint]                             | Configure the JSON HTTP destination.          | yes      |
+| `endpoint` > [`authorization`][authorization]      | Configure generic authorization.              | no       |
+| `endpoint` > [`basic_auth`][basic_auth]            | Configure basic authentication.               | no       |
+| `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 authentication.            | no       |
+| `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS for the OAuth 2.0 endpoint.      | no       |
+| `endpoint` > [`tls_config`][tls_config]            | Configure TLS for the destination.             | no       |
 | [`queue_config`][queue_config]                     | Configure the bounded transformed-body queue. | no       |
 
 [authorization]: #authorization
@@ -117,7 +117,7 @@ At most one authentication method can be configured.
 
 ### `tls_config`
 
-{{< docs/shared lookup="reference/components/http-client-tls-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `queue_config`
 
@@ -137,9 +137,9 @@ The queue is memory-only and doesn't survive process restart.
 
 The following field is exported and can be referenced by other components:
 
-| Name       | Type                     | Description                                        |
-| ---------- | ------------------------ | -------------------------------------------------- |
-| `receiver` | `AlertReceiver` | Receiver for typed alerts that must cross HTTP.    |
+| Name       | Type            | Description                                     |
+| ---------- | --------------- | ----------------------------------------------- |
+| `receiver` | `AlertReceiver` | Receiver for typed alerts that must cross HTTP. |
 
 ## Component health
 
