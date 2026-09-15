@@ -185,6 +185,9 @@ labels = { custom_override = ".override" }
 	require.NoError(t, err)
 	require.Equal(t, model.LabelSet{"custom_override": "new", "new_custom_label": "hello, world"}, alert.Labels)
 	strict := configuredDecoder(t, Arguments{LabelsFrom: ".labels", LabelsFormat: "to_string", StartsAt: ".started"})
+	alert, err = strict.Decode([]byte(`{"labels":"alertname:HighCPU,severity:critical","started":"2026-09-07T14:00:00Z"}`))
+	require.NoError(t, err)
+	require.Equal(t, model.LabelSet{"alertname": "HighCPU", "severity": "critical"}, alert.Labels)
 	for _, value := range []string{`"{severity}"`, `"{severity:critical"`, `"severity:critical}"`, `"{a:%}"`, `"{a:%2}"`, `"{a:%GG}"`, `"{a:x,a:y}"`, `"{bad-name:x}"`, `{}`, `null`, `5`, `"{}"`} {
 		_, err := strict.Decode([]byte(`{"labels":` + value + `,"started":"2026-09-07T14:00:00Z"}`))
 		require.Error(t, err, value)

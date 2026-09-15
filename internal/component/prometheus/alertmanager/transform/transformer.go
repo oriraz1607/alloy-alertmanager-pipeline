@@ -98,10 +98,12 @@ func (t *templateTransformer) update(tmpl *template.Template, compact bool, remo
 
 func compileTemplate(text string) (*template.Template, error) {
 	return template.New("alert_json").Funcs(template.FuncMap{
-		"to_json":   toJSON,
-		"to_string": alertpipeline.LabelsToString,
-		"default":   defaultValue,
-		"required":  requiredValue,
+		"to_json":     toJSON,
+		"to_string":   alertpipeline.LabelsToString,
+		"trim_prefix": strings.TrimPrefix,
+		"trim_suffix": strings.TrimSuffix,
+		"default":     defaultValue,
+		"required":    requiredValue,
 	}).Option("missingkey=zero").Parse(text)
 }
 

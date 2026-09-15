@@ -56,12 +56,14 @@ New labels and annotations automatically appear when a template serializes the c
 
 The template provides these small helper functions:
 
-| Function   | Description                                                               |
-| ---------- | ------------------------------------------------------------------------- |
-| `to_string` | Serializes a string map as sorted, percent-escaped `{name:value,...}` text. |
-| `to_json`  | Serializes a value with Go `encoding/json`, including safe string escaping. |
-| `default`  | Returns a fallback when the supplied value is empty.                      |
-| `required` | Stops rendering with the supplied message when the value is empty.        |
+| Function      | Description                                                               |
+| ------------- | ------------------------------------------------------------------------- |
+| `to_string`   | Serializes a string map as sorted, percent-escaped `{name:value,...}` text. |
+| `to_json`     | Serializes a value with Go `encoding/json`, including safe string escaping. |
+| `trim_prefix` | Removes a prefix from a string when the prefix is present.                |
+| `trim_suffix` | Removes a suffix from a string when the suffix is present.                |
+| `default`     | Returns a fallback when the supplied value is empty.                      |
+| `required`    | Stops rendering with the supplied message when the value is empty.        |
 
 A missing map entry evaluates to an empty string.
 Use `default` when an empty value is acceptable or `required` when the field must be present.
@@ -141,7 +143,7 @@ Use `to_string` when your boundary requires labels in a JSON string:
 prometheus.alertmanager.transform "string_labels" {
   compact = true
   template = `{
-    "labels": "{{ to_string .Labels }}",
+    "labels": {{ to_json (to_string .Labels) }},
     "started": {{ to_json .StartsAt }}
   }`
 }
@@ -149,9 +151,34 @@ prometheus.alertmanager.transform "string_labels" {
 
 `{{ .Labels | to_string }}` is equivalent to `{{ to_string .Labels }}`.
 The helper accepts a string map, including `.Labels` or `.Annotations`.
-It returns text without surrounding JSON quotes. Put it inside quotes as shown,
-or use `{{ .Labels | to_string | to_json }}` without surrounding quotes.
+It returns text without surrounding JSON quotes.
+Use `to_json` when you insert the resulting string into JSON so that quotes,
+backslashes, and other characters are escaped correctly.
+`{{ .Labels | to_string | to_json }}` is equivalent to the example.
 `to_json` continues to support nested JSON objects.
+
+Use `trim_prefix` and `trim_suffix` to manipulate the text returned by `to_string`.
+For example, the following configuration removes only the outer braces:
+
+```alloy
+prometheus.alertmanager.transform "string_labels" {
+  compact = true
+
+  template = `{
+    "labels": {{ to_json (trim_suffix (trim_prefix (to_string .Labels) "{") "}") }}
+  }`
+}
+```
+
+For labels `alertname=TestAlert`, `instance=server01`, and `severity=critical`,
+the configuration renders the following JSON:
+
+```json
+{"labels":"alertname:TestAlert,instance:server01,severity:critical"}
+```
+
+The trimming helpers leave the string unchanged when the prefix or suffix isn't present.
+They don't remove matching characters from inside the string.
 
 The format is `{name:value,name:value}` with names sorted by Go string order.
 An empty map becomes `{}`. Empty values are preserved, and spaces aren't trimmed.
@@ -168,9 +195,10 @@ The encoder escapes these bytes in both names and values using `%HH` with upperc
 | Control bytes `0x00`–`0x1F` and `0x7F` | Corresponding `%HH` |
 
 Spaces and valid Unicode remain unchanged. Invalid UTF-8 is rejected.
-The decoder accepts either case for hexadecimal digits, decodes escapes once,
+The decoder accepts the serialized value with or without its outer braces.
+It accepts either case for hexadecimal digits, decodes escapes once,
 and rejects incomplete escapes, invalid hex, unescaped reserved bytes, duplicate names,
-and missing delimiters. It never returns a partial map on failure.
+and one-sided delimiters. It never returns a partial map on failure.
 
 For example, `alertname=test` and `severity=critical` become:
 
@@ -216,7 +244,7 @@ For example, this template keeps the serialization delimiters:
 prometheus.alertmanager.transform "clean_labels" {
   compact                   = true
   remove_special_characters = true
-  template = `{"labels":"{{ to_string .Labels }}","started":{{ to_json .StartsAt }}}`
+  template = `{"labels":{{ to_json (to_string .Labels) }},"started":{{ to_json .StartsAt }}}`
 }
 ```
 
