@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -274,6 +275,9 @@ func importLabels(root map[string]any, mapping *compiledMapping, target model.La
 	text, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("labels_from path %s must select a JSON string", mapping.labelsFrom.raw)
+	}
+	if !strings.HasPrefix(text, "{") && !strings.HasSuffix(text, "}") {
+		text = "{" + text + "}"
 	}
 	labels, err := alertpipeline.LabelsFromString(text)
 	if err != nil {

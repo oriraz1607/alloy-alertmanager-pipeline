@@ -51,6 +51,7 @@ Arrays, filters, expressions, query strings, and type coercion aren't supported.
 
 By default, when `labels_from` or `annotations_from` exists, it must select a JSON object containing only string values.
 Set `labels_format = "to_string"` to read `labels_from` as a JSON string serialized by the transform helper.
+The decoder accepts this string with or without the outer `{` and `}` delimiters.
 An omitted or empty `labels_format` keeps object decoding. An explicit format requires `labels_from`.
 The format option only affects labels; annotations keep their existing object mapping.
 Refer to [String labels for restricted schemas](../prometheus.alertmanager.transform/#string-labels-for-restricted-schemas) for escaping rules and configurations for both sides.

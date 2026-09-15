@@ -145,14 +145,70 @@ func testAlert() alertpipeline.Alert {
 	}
 }
 
-func TestToStringPrefixAndPipeline(t *testing.T) {
-	for _, template := range []string{`{"labels":"{{ to_string .Labels }}"}`, `{"labels":"{{ .Labels | to_string }}"}`} {
+func TestToStringBehaviorUnchanged(t *testing.T) {
+	for _, template := range []string{
+		`{"labels":"{{ to_string .Labels }}"}`,
+		`{"labels":{{ to_json (to_string .Labels) }}}`,
+		`{"labels":{{ .Labels | to_string | to_json }}}`,
+	} {
 		alert := testAlert()
 		alert.Labels = model.LabelSet{"alertname": "test", "severity": "critical"}
 		body, err := configuredTransformer(t, template).Transform(alert)
 		require.NoError(t, err)
 		require.Equal(t, `{"labels":"{alertname:test,severity:critical}"}`, string(body))
 	}
+}
+
+func TestTrimStringHelpers(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		want     string
+	}{
+		{name: "existing prefix", template: `{{ to_json (trim_prefix "{abc}" "{") }}`, want: "abc}"},
+		{name: "existing suffix", template: `{{ to_json (trim_suffix "{abc}" "}") }}`, want: "{abc"},
+		{name: "missing prefix", template: `{{ to_json (trim_prefix "abc" "{") }}`, want: "abc"},
+		{name: "missing suffix", template: `{{ to_json (trim_suffix "abc" "}") }}`, want: "abc"},
+		{name: "empty string", template: `{{ to_json (trim_suffix (trim_prefix "" "{") "}") }}`, want: ""},
+		{name: "empty prefix", template: `{{ to_json (trim_prefix "abc" "") }}`, want: "abc"},
+		{name: "empty suffix", template: `{{ to_json (trim_suffix "abc" "") }}`, want: "abc"},
+		{name: "internal braces", template: `{{ to_json (trim_suffix (trim_prefix "{a{b}c}" "{") "}") }}`, want: "a{b}c"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			body, err := configuredTransformer(t, tc.template).Transform(testAlert())
+			require.NoError(t, err)
+			var got string
+			require.NoError(t, json.Unmarshal(body, &got))
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestTrimmedStringLabelsJSON(t *testing.T) {
+	alert := testAlert()
+	alert.Labels = model.LabelSet{
+		"alertname": "TestAlert",
+		"instance":  "server01",
+		"severity":  "critical",
+	}
+	transformer := configuredTransformer(t, `{
+  "labels": {{ to_json (trim_suffix (trim_prefix (to_string .Labels) "{") "}") }}
+}`)
+	transformer.compact = true
+	body, err := transformer.Transform(alert)
+	require.NoError(t, err)
+	require.Equal(t, `{"labels":"alertname:TestAlert,instance:server01,severity:critical"}`, string(body))
+	require.True(t, json.Valid(body))
+
+	var rendered struct {
+		Labels string `json:"labels"`
+	}
+	require.NoError(t, json.Unmarshal(body, &rendered))
+	require.Equal(t, "alertname:TestAlert,instance:server01,severity:critical", rendered.Labels)
+	require.NotContains(t, rendered.Labels, "{")
+	require.NotContains(t, rendered.Labels, "}")
 }
 
 func TestRemoveSpecialCharacters(t *testing.T) {

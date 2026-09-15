@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
@@ -24,7 +25,7 @@ func TestStringLabelsHTTPRoundTrip(t *testing.T) {
 		original.Labels["custom_boundary_label"] = "disk: almost, full { } \" \\ % שלום\n\t"
 		original.Labels["empty"] = ""
 		transformer := configuredTransformer(t, `{
- "labels": "{{ .Labels | to_string }}",
+ "labels": {{ to_json (to_string .Labels) }},
  "annotations": {{ .Annotations | to_json }},
  "started": {{ .StartsAt | to_json }},
  "ended": {{ .EndsAt | to_json }},
@@ -80,4 +81,42 @@ func TestStringLabelsHTTPRoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, debug, `[OUT] {"labels":`+string(labelsJSON))
 	}
+}
+
+func TestTrimmedStringLabelsDecodeRoundTrip(t *testing.T) {
+	original := testAlert()
+	original.Labels = model.LabelSet{
+		"alertname": "TestAlert",
+		"instance":  "server01",
+		"severity":  "critical",
+	}
+	transformer := configuredTransformer(t, `{
+  "labels": {{ to_json (trim_suffix (trim_prefix (to_string .Labels) "{") "}") }},
+  "started": {{ to_json .StartsAt }}
+}`)
+
+	body, err := transformer.Transform(original)
+	require.NoError(t, err)
+	require.True(t, json.Valid(body))
+	var wire struct {
+		Labels string `json:"labels"`
+	}
+	require.NoError(t, json.Unmarshal(body, &wire))
+	require.Equal(t, "alertname:TestAlert,instance:server01,severity:critical", wire.Labels)
+	require.False(t, strings.HasPrefix(wire.Labels, "{"))
+	require.False(t, strings.HasSuffix(wire.Labels, "}"))
+
+	var decoder alertpipeline.Decoder
+	_, err = decode.New(component.Options{OnStateChange: func(exports component.Exports) {
+		decoder = exports.(decode.Exports).Decoder
+	}}, decode.Arguments{
+		LabelsFrom:   ".labels",
+		LabelsFormat: "to_string",
+		StartsAt:     ".started",
+	})
+	require.NoError(t, err)
+	restored, err := decoder.Decode(body)
+	require.NoError(t, err)
+	require.Equal(t, original.Labels, restored.Labels)
+	require.Equal(t, original.StartsAt, restored.StartsAt)
 }
