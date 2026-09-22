@@ -31,24 +31,6 @@ jobs:
       img-name:  alloy-devel-boringcrypto
       dev: true
 
-  publish_linux_distroless_container:
-    uses: ./.github/workflows/publish-alloy-linux.yml
-    permissions:
-      contents: read
-      id-token: write
-    with:
-      img-name: alloy-devel-distroless
-      dev: true
-
-  publish_linux_boringcrypto_distroless_container:
-    uses: ./.github/workflows/publish-alloy-linux.yml
-    permissions:
-      contents: read
-      id-token: write
-    with:
-      img-name: alloy-devel-boringcrypto-distroless
-      dev: true
-
   publish_windows_container:
     uses: ./.github/workflows/publish-alloy-windows.yml
     permissions:
@@ -64,8 +46,6 @@ jobs:
     needs:
     - publish_linux_container
     - publish_linux_boringcrypto_container
-    - publish_linux_distroless_container
-    - publish_linux_boringcrypto_distroless_container
     permissions:
       contents: read
       id-token: write
@@ -85,7 +65,7 @@ jobs:
     - name: Get the image tag
       id: get-tag
       run: |
-        TAG="$(bash ./scripts/image-tag-docker)-distroless"
+        TAG="$(bash ./scripts/image-tag-docker)"
         echo "${TAG}" > .tag-only
         echo "grafana/alloy-dev:${TAG}" > .image-tag
         echo "tag=${TAG}" >> "$GITHUB_OUTPUT"

@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - Dockerfile
-      - Dockerfile.chisel
       - Dockerfile.windows
       - Makefile
       - 'build-tools/make/*'
@@ -27,9 +26,6 @@ jobs:
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile .
-      - name: Build distroless image
-        run: |
-          make ALLOY_IMAGE_DISTROLESS=alloy-test:distroless alloy-image-distroless
 
   windows:
     runs-on: windows-2022
