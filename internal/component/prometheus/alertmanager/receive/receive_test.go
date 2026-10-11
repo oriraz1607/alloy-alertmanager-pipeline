@@ -80,6 +80,9 @@ func TestValidWebhookForwardsTypedAlert(t *testing.T) {
 
 	response := serveWebhook(c, http.MethodPost, singleAlertWebhook)
 	require.Equal(t, http.StatusOK, response.Code)
+	require.Equal(t, "text/html; charset=utf-8", response.Header().Get("Content-Type"))
+	require.Equal(t, "0", response.Header().Get("Content-Length"))
+	require.Empty(t, response.Body.String())
 	require.Len(t, got, 1)
 	require.Equal(t, model.AlertFiring, got[0].State)
 	require.Equal(t, model.LabelValue("HighCPU"), got[0].Labels["alertname"])
