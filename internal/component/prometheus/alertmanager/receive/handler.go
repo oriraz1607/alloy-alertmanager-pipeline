@@ -82,8 +82,9 @@ func (c *Component) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c.metrics.forwardedAlerts.Add(float64(len(alerts)))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Length", "0")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok\n"))
 }
 
 func decodeWebhook(w http.ResponseWriter, r *http.Request, maxBodySize int64) (*webhook.Message, error) {
