@@ -46,7 +46,7 @@ Unknown webhook fields are ignored so that Alertmanager can add fields without b
 
 The component responds with:
 
-* `200` after every configured downstream receiver accepts the complete alert collection.
+* `200` after every configured downstream receiver accepts the complete alert collection. Successful responses have an empty body, `Content-Length: 0`, and `Content-Type: text/html; charset=utf-8`.
 * `400` for malformed or invalid webhook data.
 * `405` for methods other than `POST`.
 * `413` when the request exceeds `max_request_body_size`.
