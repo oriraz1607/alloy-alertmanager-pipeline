@@ -44,7 +44,7 @@ You can use the following arguments with `prometheus.alertmanager.http_receive`:
 Only exact-path `POST` requests are decoded.
 Other paths return `404`, other methods return `405`, oversized bodies return `413`, and decoder errors return `400`.
 A downstream rejection returns `503`, and a downstream timeout returns `504`.
-The component returns `200` only after every downstream receiver accepts the decoded alert.
+The component returns `200` only after every downstream receiver accepts the decoded alert. Successful responses have an empty body, `Content-Length: 0`, and `Content-Type: text/html; charset=utf-8`.
 
 Changing `decoder` changes subsequent request decoding without restarting the listener.
 Changing `path` stops the old listener and starts a listener with only the new route, so the old path isn't left active.

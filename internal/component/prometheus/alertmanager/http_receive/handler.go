@@ -3,7 +3,6 @@ package http_receive
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -77,6 +76,7 @@ func (c *Component) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.metrics.forwardedAlerts.Inc()
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Length", "0")
 	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprintln(w, "ok")
 }
