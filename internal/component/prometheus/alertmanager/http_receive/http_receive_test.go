@@ -54,7 +54,11 @@ func TestConfiguredPathMethodDecodeAndForward(t *testing.T) {
 			return nil
 		}),
 	)
-	require.Equal(t, http.StatusOK, serve(c, http.MethodPost, "/alerts", `{"name":"HighCPU"}`).Code)
+	response := serve(c, http.MethodPost, "/alerts", `{"name":"HighCPU"}`)
+	require.Equal(t, http.StatusOK, response.Code)
+	require.Equal(t, "text/html; charset=utf-8", response.Header().Get("Content-Type"))
+	require.Equal(t, "0", response.Header().Get("Content-Length"))
+	require.Empty(t, response.Body.String())
 	require.Len(t, got, 1)
 	require.Equal(t, model.LabelValue("HighCPU"), got[0].Labels["alertname"])
 
