@@ -135,12 +135,35 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Test custom Alertmanager components
+      - name: Install heartbeat test binaries
+        if: steps.merge.outputs.changed == 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          mkdir -p heartbeat-bin
+          prometheus=prometheus-3.14.0.linux-amd64
+          alertmanager=alertmanager-0.34.0.linux-amd64
+          curl --fail --location --retry 3 -o prometheus.tar.gz \
+            "https://github.com/prometheus/prometheus/releases/download/v3.14.0/$prometheus.tar.gz"
+          curl --fail --location --retry 3 -o alertmanager.tar.gz \
+            "https://github.com/prometheus/alertmanager/releases/download/v0.34.0/$alertmanager.tar.gz"
+          sha256sum --check <<'CHECKSUMS'
+          f665c6da19eb7ba399c915d30c7d9793c9b417bf8a749b504bc470678631478d  prometheus.tar.gz
+          19c75a11d8c03dc4ade7abdbddfb3a8f28c9e7b000d0849cda0cd71dffd74a03  alertmanager.tar.gz
+          CHECKSUMS
+          tar -xzf prometheus.tar.gz -C heartbeat-bin --strip-components=1 "$prometheus/prometheus" "$prometheus/promtool"
+          tar -xzf alertmanager.tar.gz -C heartbeat-bin --strip-components=1 "$alertmanager/alertmanager" "$alertmanager/amtool"
+          echo "$RUNNER_TEMP/heartbeat-bin" >> "$GITHUB_PATH"
+
+      - name: Test custom Alertmanager components and heartbeat rules
         if: steps.merge.outputs.changed == 'true'
         run: |
-          go test -race -tags=nodocker \
+          amtool check-config examples/alertmanager-heartbeat/source-alertmanager.yaml
+          ./examples/alertmanager-heartbeat/test-rules.sh
+          go test -race -count=1 -tags=nodocker \
             ./internal/component/common/alertmanager \
-            ./internal/component/prometheus/alertmanager/...
+            ./internal/component/prometheus/alertmanager/... \
+            ./internal/pipelinetest/alertmanager
 
       - name: Push tested update
         if: steps.merge.outputs.changed == 'true'

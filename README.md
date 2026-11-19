@@ -306,8 +306,9 @@ binaries and container images.
 3. Select **Run workflow**, leave the upstream branch as `main`, and run it.
 
 The workflow merges the latest `grafana/alloy` source and runs race-enabled
-tests for the shared alert contract and all Alertmanager component packages before
-it updates this repository's `main` branch. A merge conflict or failed check leaves
+tests for the shared alert contract, all Alertmanager components, and the end-to-end
+heartbeat pipeline with Prometheus and Alertmanager. It validates the heartbeat rules
+with `promtool` before updating `main`. A merge conflict or failed check leaves
 `main` unchanged. The workflow summary records the upstream commit. The repository
 preserves its own workflows across upstream updates.
 
