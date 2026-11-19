@@ -54,9 +54,10 @@ describe('Alertmanager graph', () => {
     ]);
   });
 
-  it('shows the decoder feeding a terminal heartbeat observer and a relabel-to-write branch', () => {
+  it('shows the decoder feeding a heartbeat observer and a relabel-to-route branch', () => {
     const write = component('prometheus.alertmanager.write', 'destination');
-    const relabel = component('prometheus.alertmanager.relabel', 'ordinary', [write.localID]);
+    const route = component('prometheus.alertmanager.route', 'dispatch', [write.localID]);
+    const relabel = component('prometheus.alertmanager.relabel', 'ordinary', [route.localID]);
     const heartbeat = component('prometheus.alertmanager.heartbeat', 'networks');
     const decoder = component('prometheus.alertmanager.decode', 'boundary', [
       'prometheus.alertmanager.http_receive.incoming',
@@ -64,9 +65,10 @@ describe('Alertmanager graph', () => {
     const receive = component('prometheus.alertmanager.http_receive', 'incoming', [heartbeat.localID, relabel.localID]);
     receive.referencesTo = [decoder.localID, heartbeat.localID, relabel.localID];
 
-    const graph = buildPipelineGraph([write, relabel, heartbeat, decoder, receive]);
+    const graph = buildPipelineGraph([write, route, relabel, heartbeat, decoder, receive]);
     expect(graph.edges.map(({ source, target }) => ({ source, target }))).toEqual([
-      { source: relabel.localID, target: write.localID },
+      { source: route.localID, target: write.localID },
+      { source: relabel.localID, target: route.localID },
       { source: decoder.localID, target: heartbeat.localID },
       { source: decoder.localID, target: relabel.localID },
       { source: receive.localID, target: decoder.localID },
@@ -75,6 +77,7 @@ describe('Alertmanager graph', () => {
     for (const node of graph.nodes) expect(node.signals).toEqual([SignalKind.Other]);
     expect(graph.nodes.map(({ id, stage }) => ({ id, stage }))).toEqual([
       { id: write.localID, stage: PipelineStage.Send },
+      { id: route.localID, stage: PipelineStage.Process },
       { id: relabel.localID, stage: PipelineStage.Process },
       { id: heartbeat.localID, stage: PipelineStage.Process },
       { id: decoder.localID, stage: PipelineStage.Process },

@@ -36,6 +36,7 @@ function componentStage(name: string): PipelineStage {
       return PipelineStage.Collect;
     case 'prometheus.alertmanager.transform':
     case 'prometheus.alertmanager.decode':
+    case 'prometheus.alertmanager.route':
     case 'prometheus.alertmanager.relabel':
     case 'prometheus.alertmanager.heartbeat':
       return PipelineStage.Process;
