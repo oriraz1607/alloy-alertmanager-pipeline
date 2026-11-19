@@ -161,7 +161,7 @@ func TestFunctionReceiverIdentity(t *testing.T) {
 func TestAdmissionFailureAndRetry(t *testing.T) {
 	first, last := &recorder{}, &recorder{}
 	full := errors.New("queue full")
-	var refusal error = full
+	refusal := full
 	middle := alertpipeline.ReceiverFunc(func(_ context.Context, alerts []alertpipeline.Alert) error {
 		// A downstream receiver may mutate its own batch.
 		alerts[0].Labels["severity"] = "mutated"
