@@ -30,7 +30,7 @@ prometheus.alertmanager.relabel "<LABEL>" {
 
 | Name | Type | Description | Required |
 | --- | --- | --- | --- |
-| `forward_to` | `list(AlertReceiver)` | Receivers for the collection of surviving alerts. | yes |
+| `forward_to` | `list(AlertReceiver)` | Nonempty list of receivers for surviving alerts. Each entry must be a valid receiver. | yes |
 
 ## Blocks
 

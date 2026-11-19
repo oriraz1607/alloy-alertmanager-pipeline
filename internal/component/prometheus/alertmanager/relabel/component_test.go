@@ -14,6 +14,8 @@ import (
 	alertpipeline "github.com/grafana/alloy/internal/component/common/alertmanager"
 	alloyrelabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 func TestOrderedRulesFilterAlertsAndIsolateFanout(t *testing.T) {
@@ -166,7 +168,7 @@ func TestValidationAndReload(t *testing.T) {
 		"action = \"labeldrop\"\ntarget_label = \"x\"",
 	} {
 		var args Arguments
-		require.Error(t, syntax.Unmarshal([]byte("forward_to = []\nrule {\n"+rule+"\n}\n"), &args))
+		require.Error(t, decodeRules("rule {\n"+rule+"\n}\n", &args))
 	}
 
 	initial := parseRules(t, "rule {\ntarget_label = \"environment\"\nreplacement = \"one\"\n}")
@@ -178,7 +180,7 @@ func TestValidationAndReload(t *testing.T) {
 	c, receiver := newComponent(t, initial)
 	// The rejected configuration would remove the old destination as well.
 	invalid := alloyrelabel.DefaultRelabelConfig
-	require.Error(t, c.Update(Arguments{Rules: []*alloyrelabel.Config{&invalid}}))
+	require.Error(t, c.Update(Arguments{ForwardTo: initial.ForwardTo, Rules: []*alloyrelabel.Config{&invalid}}))
 	require.NoError(t, receiver.Send(t.Context(), []alertpipeline.Alert{sampleAlert()}))
 
 	next := parseRules(t, "rule {\ntarget_label = \"environment\"\nreplacement = \"two\"\n}")
@@ -186,6 +188,29 @@ func TestValidationAndReload(t *testing.T) {
 	require.NoError(t, c.Update(next))
 	require.NoError(t, receiver.Send(t.Context(), []alertpipeline.Alert{sampleAlert()}))
 	require.Equal(t, []model.LabelValue{"one", "two"}, environments)
+}
+
+func TestInvalidDestinationsKeepPreviousReceiver(t *testing.T) {
+	var calls int
+	active := alertpipeline.ReceiverFunc(func(context.Context, []alertpipeline.Alert) error {
+		calls++
+		return nil
+	})
+	c, receiver := newComponent(t, Arguments{ForwardTo: []alertpipeline.Receiver{active}})
+	for _, config := range []string{"forward_to = []", "forward_to = [null]"} {
+		var args Arguments
+		require.ErrorContains(t, syntax.Unmarshal([]byte(config), &args), "forward_to")
+	}
+	for _, destinations := range [][]alertpipeline.Receiver{
+		{}, {active, nil}, {(*Component)(nil)}, {alertpipeline.ReceiverFunc(nil)},
+	} {
+		args := Arguments{ForwardTo: destinations}
+		_, err := New(component.Options{}, args)
+		require.ErrorContains(t, err, "forward_to")
+		require.ErrorContains(t, c.Update(args), "forward_to")
+	}
+	require.NoError(t, receiver.Send(t.Context(), []alertpipeline.Alert{sampleAlert()}))
+	require.Equal(t, 1, calls)
 }
 
 func TestForwardErrorsAndCancellation(t *testing.T) {
@@ -249,8 +274,16 @@ func TestReloadDrainsInFlightCollection(t *testing.T) {
 func parseRules(t *testing.T, body string) Arguments {
 	t.Helper()
 	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte("forward_to = []\n"+body+"\n"), &args))
+	require.NoError(t, decodeRules(body, &args))
 	return args
+}
+
+func decodeRules(body string, args *Arguments) error {
+	f, err := parser.ParseFile("", []byte("forward_to = [destination]\n"+body+"\n"))
+	if err != nil {
+		return err
+	}
+	return vm.New(f).Evaluate(vm.NewScope(map[string]any{"destination": &Component{}}), args)
 }
 
 func newComponent(t *testing.T, args Arguments) (*Component, alertpipeline.Receiver) {

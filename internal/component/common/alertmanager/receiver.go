@@ -2,6 +2,8 @@ package alertmanager
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"sync"
 )
 
@@ -11,6 +13,25 @@ import (
 // Implementations must honor context cancellation while applying backpressure.
 type Receiver interface {
 	Send(context.Context, []Alert) error
+}
+
+// ValidateReceivers checks that a destination list can accept forwarded alerts.
+func ValidateReceivers(receivers []Receiver) error {
+	if len(receivers) == 0 {
+		return fmt.Errorf("must contain at least one receiver")
+	}
+	for i, receiver := range receivers {
+		v := reflect.ValueOf(receiver)
+		switch v.Kind() {
+		case reflect.Invalid:
+			return fmt.Errorf("receiver %d is nil", i+1)
+		case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice:
+			if v.IsNil() {
+				return fmt.Errorf("receiver %d is nil", i+1)
+			}
+		}
+	}
+	return nil
 }
 
 // ReceiverFunc adapts a function into a Receiver.

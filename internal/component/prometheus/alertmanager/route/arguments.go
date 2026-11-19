@@ -42,15 +42,12 @@ func compile(args Arguments) (*routingTable, error) {
 	// which cannot be compared directly or used as interface map keys.
 	receiverIDs := make(map[reflect.Value]int)
 	destinations := func(receivers []alertpipeline.Receiver) ([]int, error) {
-		if len(receivers) == 0 {
-			return nil, fmt.Errorf("must contain at least one receiver")
+		if err := alertpipeline.ValidateReceivers(receivers); err != nil {
+			return nil, err
 		}
 		ids := make([]int, 0, len(receivers))
-		for i, receiver := range receivers {
+		for _, receiver := range receivers {
 			key := reflect.ValueOf(receiver)
-			if !key.IsValid() || ((key.Kind() == reflect.Pointer || key.Kind() == reflect.Func) && key.IsNil()) {
-				return nil, fmt.Errorf("receiver %d is nil", i+1)
-			}
 			id, ok := receiverIDs[key]
 			if !ok {
 				id = len(table.receivers)

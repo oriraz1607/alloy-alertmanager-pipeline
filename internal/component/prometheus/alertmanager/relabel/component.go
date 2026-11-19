@@ -36,11 +36,14 @@ type Arguments struct {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	_, err := args.compileRules()
+	_, err := args.compile()
 	return err
 }
 
-func (args *Arguments) compileRules() ([]*promrelabel.Config, error) {
+func (args *Arguments) compile() ([]*promrelabel.Config, error) {
+	if err := alertpipeline.ValidateReceivers(args.ForwardTo); err != nil {
+		return nil, fmt.Errorf("forward_to: %w", err)
+	}
 	for i, rule := range args.Rules {
 		if rule == nil || rule.Regex.Regexp == nil {
 			return nil, fmt.Errorf("rule %d: missing rule or compiled regex", i+1)
@@ -110,7 +113,7 @@ func (c *Component) Run(ctx context.Context) error {
 // Update activates the new rules and destinations together.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
-	rules, err := newArgs.compileRules()
+	rules, err := newArgs.compile()
 	if err != nil {
 		return err
 	}
