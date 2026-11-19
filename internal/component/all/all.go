@@ -139,6 +139,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/http"             // Import prometheus.alertmanager.http
 	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/http_receive"     // Import prometheus.alertmanager.http_receive
 	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/receive"          // Import prometheus.alertmanager.receive
+	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/relabel"          // Import prometheus.alertmanager.relabel
 	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/transform"        // Import prometheus.alertmanager.transform
 	_ "github.com/grafana/alloy/internal/component/prometheus/alertmanager/write"            // Import prometheus.alertmanager.write
 	_ "github.com/grafana/alloy/internal/component/prometheus/echo"                          // Import prometheus.echo
