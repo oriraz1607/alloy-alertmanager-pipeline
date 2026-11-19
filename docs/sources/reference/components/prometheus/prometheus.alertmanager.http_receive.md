@@ -18,6 +18,9 @@ title: prometheus.alertmanager.http_receive
 
 You can specify multiple `prometheus.alertmanager.http_receive` components by giving them different labels.
 
+In `forward_to`, use a [relabel receiver](../prometheus.alertmanager.relabel/) to normalize labels or filter individual alerts.
+Add a [heartbeat receiver](../prometheus.alertmanager.heartbeat/) to observe source timestamps on the same listener.
+
 ## Usage
 
 ```alloy

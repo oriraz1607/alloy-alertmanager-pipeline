@@ -5,9 +5,8 @@
 
 # Alloy Alertmanager pipeline
 
-This repository is a custom Grafana Alloy build with seven community components
-for routing and forwarding Alertmanager alerts, sending configuration-defined
-JSON across HTTP boundaries, and reconstructing alerts at the destination.
+This custom Grafana Alloy build routes and relabels Alertmanager alerts, carries them
+across HTTP boundaries, and monitors heartbeat freshness for each source network.
 It retains Alloy's support for metrics, logs, traces, and profiles.
 This is a community build, not an official Grafana release.
 
@@ -42,7 +41,22 @@ run their own listeners or delivery queues.
 | [`prometheus.alertmanager.http`](docs/sources/reference/components/prometheus/prometheus.alertmanager.http.md) | Queue transformed JSON and send one HTTP POST per alert to the exact configured URL. |
 | [`prometheus.alertmanager.http_receive`](docs/sources/reference/components/prometheus/prometheus.alertmanager.http_receive.md) | Accept one custom JSON object on a configurable HTTP path and forward the decoded alert. |
 | [`prometheus.alertmanager.decode`](docs/sources/reference/components/prometheus/prometheus.alertmanager.decode.md) | Map JSON fields and complete label or annotation maps back to a typed alert. |
+| [`prometheus.alertmanager.relabel`](docs/sources/reference/components/prometheus/prometheus.alertmanager.relabel.md) | Rewrite alert labels or filter whole alerts before forwarding. |
+| [`prometheus.alertmanager.heartbeat`](docs/sources/reference/components/prometheus/prometheus.alertmanager.heartbeat.md) | Expose the newest source evaluation timestamp received for each expected network. |
 | [`prometheus.alertmanager.write`](docs/sources/reference/components/prometheus/prometheus.alertmanager.write.md) | Batch alerts for the Alertmanager API v2, retry delivery, and refresh alert lifecycle state. |
+
+## Monitor the path from each source network
+
+The [end-to-end heartbeat example](examples/alertmanager-heartbeat/README.md) includes
+copyable edge and central Alloy configurations, the source Prometheus rule and
+Alertmanager route, and central Prometheus alerting rules.
+
+Each edge attaches its network name and sends the original source evaluation
+timestamp through the HTTP boundary. One central listener decodes both production
+alerts and probes. It forwards to the heartbeat observer and to an incident branch
+that drops `PipelineHeartbeat` before the existing receiver. A delayed or repeated
+notification retains its original evidence time. To verify final ingestion by
+Alertmanager, Splunk, or ServiceNow, observe that destination separately.
 
 ## Direct forwarding quick start
 
@@ -173,7 +187,7 @@ for details.
 
 ## Native Live Debugging
 
-The six components listed below support Alloy's Live Debugging UI.
+The components in the table below support Alloy's Live Debugging UI.
 Add this top-level block to each Alloy configuration you want to inspect:
 
 ```alloy
@@ -262,15 +276,19 @@ mise install
 mise exec -- make alloy
 ```
 
-Run focused tests for the shared alert contract and all seven components:
+Run the focused tests for the shared alert contract, the Alertmanager components, and the cross-network pipeline.
 
 ```sh
-mise exec -- go test -race -tags=nodocker ./internal/component/common/alertmanager ./internal/component/prometheus/alertmanager/... ./internal/service/livedebugging
+mise exec -- go test -race -tags=nodocker ./internal/component/common/alertmanager ./internal/component/prometheus/alertmanager/... ./internal/pipelinetest/alertmanager ./internal/service/livedebugging
 ```
 
 Run the repository lint checks with `mise exec -- make lint`. The focused tests
-cover label-based routing, native debug registration and values, HTTP retries
-and redaction, and delivery with debugging enabled and unused.
+cover label-based routing, relabeling, heartbeat freshness, the example configurations,
+native debug registration, HTTP retries and redaction, and delivery with debugging enabled and unused.
+With `prometheus` and `alertmanager` on `PATH`, the suite also runs the source
+rule through real Prometheus and Alertmanager processes to the central observer.
+Run `examples/alertmanager-heartbeat/test-rules.sh` with `promtool` on `PATH`
+to exercise the central alerting rules and source annotation over simulated time.
 
 The [schema-firewall integration test](integration-tests/alertmanager-schema-firewall/README.md)
 exercises webhook ingestion, API v2 payload validation, multi-alert forwarding,
@@ -290,10 +308,8 @@ binaries and container images.
 The workflow merges the latest `grafana/alloy` source and runs race-enabled
 tests for the shared alert contract and all Alertmanager component packages before
 it updates this repository's `main` branch. A merge conflict or failed check leaves
-`main` unchanged. The workflow summary records the exact upstream commit that was
-incorporated. The repository's `.github/workflows` directory is intentionally
-preserved so upstream Grafana automation doesn't replace these custom workflows
-or block the repository token from pushing the update.
+`main` unchanged. The workflow summary records the upstream commit. The repository
+preserves its own workflows across upstream updates.
 
 This update workflow deliberately doesn't perform a complete Alloy build: that
 can exhaust a standard GitHub-hosted runner. Use **Build custom release files**

@@ -1,0 +1,22 @@
+# In an existing route tree insert the heartbeat route first, before catch-alls.
+route:
+  receiver: edge-alloy
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - 'alertname="PipelineHeartbeat"'
+      receiver: edge-alloy
+      group_by: [alertname]
+      group_wait: 5s
+      group_interval: 30s
+      repeat_interval: 1m
+      continue: false
+
+receivers:
+  - name: edge-alloy
+    webhook_configs:
+      - url: http://edge-alloy:9095/webhook
+        send_resolved: true

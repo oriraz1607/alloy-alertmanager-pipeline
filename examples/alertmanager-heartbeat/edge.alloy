@@ -1,0 +1,54 @@
+// Deploy one edge per source network. Set the replacement to its network name.
+prometheus.alertmanager.receive "source" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 9095
+  }
+
+  forward_to = [prometheus.alertmanager.relabel.normalize.receiver]
+}
+
+prometheus.alertmanager.relabel "normalize" {
+  forward_to = [prometheus.alertmanager.http.central.receiver]
+
+  rule {
+    source_labels = ["cluster", "clustername"]
+    separator     = ";"
+    regex         = ";(.+)"
+    target_label  = "cluster"
+    replacement   = "$1"
+    action        = "replace"
+  }
+
+  rule {
+    target_label = "source_network"
+    replacement  = "network-a"
+    action       = "replace"
+  }
+
+  rule {
+    regex  = "clustername"
+    action = "labeldrop"
+  }
+}
+
+prometheus.alertmanager.http "central" {
+  transformer = prometheus.alertmanager.transform.boundary.transformer
+
+  endpoint {
+    url = "http://central-alloy:5002/alerts"
+  }
+}
+
+prometheus.alertmanager.transform "boundary" {
+  compact = true
+  template = `{
+    "labels": {{ to_json .Labels }},
+    "annotations": {{ to_json .Annotations }},
+    "startsAt": {{ to_json .StartsAt }},
+    "endsAt": {{ to_json .EndsAt }},
+    "status": {{ to_json .Status }},
+    "generatorURL": {{ to_json .GeneratorURL }},
+    "fingerprint": {{ to_json .SourceFingerprint }}
+  }`
+}

@@ -1,0 +1,35 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pipeline-heartbeat-central
+spec:
+  groups:
+    - name: pipeline-heartbeat.central
+      interval: 30s
+      rules:
+        - record: pipeline_heartbeat:last_source_timestamp_seconds
+          expr: |
+            max by (source_network) (
+              prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{
+                job="central-alloy", component_id="prometheus.alertmanager.heartbeat.networks"
+              }
+            )
+        - alert: PipelineHeartbeatStale
+          expr: |
+            (pipeline_heartbeat:last_source_timestamp_seconds == 0)
+            or (time() - pipeline_heartbeat:last_source_timestamp_seconds > 300)
+          for: 3m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Central Alloy has no fresh heartbeat from {{ $labels.source_network }}'
+        - alert: PipelineHeartbeatObserverMissing
+          expr: |
+            absent(prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{
+              job="central-alloy", component_id="prometheus.alertmanager.heartbeat.networks"
+            })
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: No central Alloy heartbeat observer is being scraped

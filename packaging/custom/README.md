@@ -4,7 +4,9 @@ This bundle contains a custom Linux AMD64 Grafana Alloy binary with these
 Alertmanager community components:
 
 - `prometheus.alertmanager.receive`
+- `prometheus.alertmanager.relabel`
 - `prometheus.alertmanager.route`
+- `prometheus.alertmanager.heartbeat`
 - `prometheus.alertmanager.transform`
 - `prometheus.alertmanager.http`
 - `prometheus.alertmanager.http_receive`
