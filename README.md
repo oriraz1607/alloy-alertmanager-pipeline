@@ -5,9 +5,9 @@
 
 # Alloy Alertmanager pipeline
 
-This repository is a custom Grafana Alloy build with six community components
-for forwarding Alertmanager alerts, sending configuration-defined JSON across
-HTTP boundaries, and reconstructing alerts at the destination.
+This repository is a custom Grafana Alloy build with seven community components
+for routing and forwarding Alertmanager alerts, sending configuration-defined
+JSON across HTTP boundaries, and reconstructing alerts at the destination.
 It retains Alloy's support for metrics, logs, traces, and profiles.
 This is a community build, not an official Grafana release.
 
@@ -37,6 +37,7 @@ run their own listeners or delivery queues.
 | Component | Purpose |
 | --- | --- |
 | [`prometheus.alertmanager.receive`](docs/sources/reference/components/prometheus/prometheus.alertmanager.receive.md) | Accept Alertmanager webhook notifications on `POST /webhook` and forward typed alerts. |
+| [`prometheus.alertmanager.route`](docs/sources/reference/components/prometheus/prometheus.alertmanager.route.md) | Select downstream receivers by each alert's labels, with ordered rules and a default destination. |
 | [`prometheus.alertmanager.transform`](docs/sources/reference/components/prometheus/prometheus.alertmanager.transform.md) | Render each typed alert as JSON using a Go template, with optional compact output. |
 | [`prometheus.alertmanager.http`](docs/sources/reference/components/prometheus/prometheus.alertmanager.http.md) | Queue transformed JSON and send one HTTP POST per alert to the exact configured URL. |
 | [`prometheus.alertmanager.http_receive`](docs/sources/reference/components/prometheus/prometheus.alertmanager.http_receive.md) | Accept one custom JSON object on a configurable HTTP path and forward the decoded alert. |
@@ -85,6 +86,17 @@ receivers:
 Route the relevant alerts to this receiver in your Alertmanager configuration.
 The writer sends a JSON array to `POST /api/v2/alerts` when its destination URL
 has no path. You can fan out by adding more writer receivers to `forward_to`.
+
+## Route alerts by label on one listener
+
+Keep the source Alertmanager pointing to the same webhook URL. On the receiving
+Alloy instance, set `receive.forward_to` to
+`[prometheus.alertmanager.route.dispatch.receiver]`. The router can split a
+single webhook across NOC, application, and default destinations using each
+alert's labels. Both HTTP senders and Alertmanager writers can receive the results.
+
+The [single-listener example](docs/sources/reference/components/prometheus/prometheus.alertmanager.route.md#route-an-alertmanager-webhook)
+includes all three HTTP senders and the expected deliveries for a four-alert webhook.
 
 ## Custom JSON between Alloy instances
 
@@ -161,7 +173,7 @@ for details.
 
 ## Native Live Debugging
 
-All six Alertmanager components support Alloy's existing Live Debugging UI.
+The six components listed below support Alloy's Live Debugging UI.
 Add this top-level block to each Alloy configuration you want to inspect:
 
 ```alloy
@@ -250,14 +262,14 @@ mise install
 mise exec -- make alloy
 ```
 
-Run focused tests for the shared alert contract and all six components:
+Run focused tests for the shared alert contract and all seven components:
 
 ```sh
 mise exec -- go test -race -tags=nodocker ./internal/component/common/alertmanager ./internal/component/prometheus/alertmanager/... ./internal/service/livedebugging
 ```
 
 Run the repository lint checks with `mise exec -- make lint`. The focused tests
-cover native debug registration, values across all six components, HTTP retries
+cover label-based routing, native debug registration and values, HTTP retries
 and redaction, and delivery with debugging enabled and unused.
 
 The [schema-firewall integration test](integration-tests/alertmanager-schema-firewall/README.md)
@@ -276,13 +288,12 @@ binaries and container images.
 3. Select **Run workflow**, leave the upstream branch as `main`, and run it.
 
 The workflow merges the latest `grafana/alloy` source and runs race-enabled
-tests for the shared alert contract and `receive`/`write` packages before it updates this repository's
-`main` branch. A merge conflict or failed check leaves `main` unchanged. The
-workflow summary records the exact upstream commit that was incorporated.
-The workflow currently doesn't test the four custom JSON components; run the
-full focused command above to cover them. The repository's `.github/workflows` directory is intentionally preserved so
-upstream Grafana automation doesn't replace these custom workflows or block the
-repository token from pushing the update.
+tests for the shared alert contract and all Alertmanager component packages before
+it updates this repository's `main` branch. A merge conflict or failed check leaves
+`main` unchanged. The workflow summary records the exact upstream commit that was
+incorporated. The repository's `.github/workflows` directory is intentionally
+preserved so upstream Grafana automation doesn't replace these custom workflows
+or block the repository token from pushing the update.
 
 This update workflow deliberately doesn't perform a complete Alloy build: that
 can exhaust a standard GitHub-hosted runner. Use **Build custom release files**

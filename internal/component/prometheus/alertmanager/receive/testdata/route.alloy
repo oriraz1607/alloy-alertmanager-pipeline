@@ -1,0 +1,45 @@
+prometheus.alertmanager.receive "incoming" {
+	http {
+		listen_address = "127.0.0.1"
+		listen_port    = 0
+	}
+	forward_to = [prometheus.alertmanager.route.dispatch.receiver]
+}
+
+prometheus.alertmanager.route "dispatch" {
+	route {
+		matchers   = [`severity="critical"`]
+		forward_to = [prometheus.alertmanager.http.noc.receiver]
+		continue   = true
+	}
+	route {
+		matchers   = [`namespace="payments"`, `environment="prod"`]
+		forward_to = [prometheus.alertmanager.http.payments.receiver]
+	}
+	default_forward_to = [prometheus.alertmanager.http.general.receiver]
+}
+
+prometheus.alertmanager.transform "json" {
+	template = "{{ to_json . }}"
+}
+
+prometheus.alertmanager.http "noc" {
+	transformer = prometheus.alertmanager.transform.json.transformer
+	endpoint {
+		url = sys.env("ROUTE_TEST_DESTINATION") + "/noc"
+	}
+}
+
+prometheus.alertmanager.http "payments" {
+	transformer = prometheus.alertmanager.transform.json.transformer
+	endpoint {
+		url = sys.env("ROUTE_TEST_DESTINATION") + "/payments"
+	}
+}
+
+prometheus.alertmanager.http "general" {
+	transformer = prometheus.alertmanager.transform.json.transformer
+	endpoint {
+		url = sys.env("ROUTE_TEST_DESTINATION") + "/general"
+	}
+}

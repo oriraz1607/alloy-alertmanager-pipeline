@@ -19,6 +19,7 @@ import (
 	alertpipeline "github.com/grafana/alloy/internal/component/common/alertmanager"
 	alertdecode "github.com/grafana/alloy/internal/component/prometheus/alertmanager/decode"
 	alerthttp "github.com/grafana/alloy/internal/component/prometheus/alertmanager/http"
+	"github.com/grafana/alloy/internal/component/prometheus/alertmanager/route"
 	alerttransform "github.com/grafana/alloy/internal/component/prometheus/alertmanager/transform"
 	alertwrite "github.com/grafana/alloy/internal/component/prometheus/alertmanager/write"
 	"github.com/grafana/alloy/internal/util"
@@ -145,6 +146,48 @@ func TestConfigurableSchemaHTTPPathDecodeAndAlertmanagerWritePipeline(t *testing
 			require.Equal(t, "2026-09-07T14:00:00.000Z", alert["startsAt"])
 			require.Equal(t, "https://prometheus.example.test/graph", alert["generatorURL"])
 		})
+	}
+}
+
+func TestRouteDecodedLabelsToAlertmanagerWriter(t *testing.T) {
+	deliveries := make(chan []model.Alert, 1)
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var alerts []model.Alert
+		if err := json.NewDecoder(r.Body).Decode(&alerts); err != nil {
+			t.Errorf("decoding Alertmanager request: %v", err)
+		}
+		if r.URL.Path != "/api/v2/alerts" {
+			t.Errorf("writer used unexpected path %q", r.URL.Path)
+		}
+		deliveries <- alerts
+	}))
+	t.Cleanup(destination.Close)
+	writer, stopWriter := startAlertmanagerWriter(t, destination.URL)
+	t.Cleanup(stopWriter)
+	fallback := alertpipeline.ReceiverFunc(func(context.Context, []alertpipeline.Alert) error {
+		t.Error("matched decoded alert reached the default receiver")
+		return nil
+	})
+	var receiver alertpipeline.Receiver
+	_, err := route.New(testOptions(t, "prometheus.alertmanager.route.integration", func(exports component.Exports) {
+		receiver = exports.(route.Exports).Receiver
+	}), route.Arguments{
+		Routes: []route.Route{{
+			Matchers: []string{`team="payments"`}, ForwardTo: []alertpipeline.Receiver{writer},
+		}},
+		DefaultForwardTo: []alertpipeline.Receiver{fallback},
+	})
+	require.NoError(t, err)
+	decoder := buildDecoder(t, alertdecode.Arguments{LabelsFrom: ".dimensions", StartsAt: ".start"})
+	c := newHandlerComponent(t, "/alerts", decoder, receiver)
+	resp := serve(c, http.MethodPost, "/alerts", `{"dimensions":{"alertname":"Backlog","team":"payments"},"start":"2026-09-07T14:00:00Z"}`)
+	require.Equal(t, http.StatusOK, resp.Code)
+	select {
+	case batch := <-deliveries:
+		require.Len(t, batch, 1)
+		require.Equal(t, model.LabelSet{"alertname": "Backlog", "team": "payments"}, batch[0].Labels)
+	case <-time.After(5 * time.Second):
+		t.Fatal("writer did not deliver the decoded alert")
 	}
 }
 
