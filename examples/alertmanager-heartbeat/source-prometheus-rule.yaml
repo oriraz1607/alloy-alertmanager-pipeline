@@ -1,0 +1,13 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pipeline-heartbeat-source
+spec:
+  groups:
+    - name: pipeline-heartbeat.source
+      interval: 30s
+      rules:
+        - alert: PipelineHeartbeat
+          expr: time()
+          annotations:
+            source_timestamp_seconds: '{{ printf "%.3f" $value }}'

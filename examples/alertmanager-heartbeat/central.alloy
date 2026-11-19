@@ -1,0 +1,44 @@
+prometheus.alertmanager.http_receive "incoming" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 5002
+  }
+
+  path    = "/alerts"
+  decoder = prometheus.alertmanager.decode.boundary.decoder
+  forward_to = [
+    prometheus.alertmanager.heartbeat.networks.receiver,
+    prometheus.alertmanager.relabel.incidents.receiver,
+  ]
+}
+
+prometheus.alertmanager.decode "boundary" {
+  labels_from        = ".labels"
+  annotations_from   = ".annotations"
+  starts_at          = ".startsAt"
+  ends_at            = ".endsAt"
+  status             = ".status"
+  generator_url      = ".generatorURL"
+  source_fingerprint = ".fingerprint"
+}
+
+prometheus.alertmanager.heartbeat "networks" {
+  expected_networks = ["network-a", "network-b"]
+}
+
+prometheus.alertmanager.relabel "incidents" {
+  // Put all NOC and ServiceNow delivery receivers behind this filter.
+  forward_to = [prometheus.alertmanager.write.incidents.receiver]
+
+  rule {
+    source_labels = ["alertname"]
+    regex         = "PipelineHeartbeat"
+    action        = "drop"
+  }
+}
+
+prometheus.alertmanager.write "incidents" {
+  endpoint {
+    url = "http://alertmanager:9093"
+  }
+}

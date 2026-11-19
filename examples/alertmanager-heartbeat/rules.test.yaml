@@ -1,0 +1,98 @@
+rule_files:
+  - source.rules.yaml
+  - central.rules.yaml
+
+evaluation_interval: 30s
+
+tests:
+  - name: each source evaluation refreshes the annotation on the same alert
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: PipelineHeartbeat
+        exp_alerts:
+          - exp_labels: {}
+            exp_annotations:
+              source_timestamp_seconds: "60.000"
+      - eval_time: 2m
+        alertname: PipelineHeartbeat
+        exp_alerts:
+          - exp_labels: {}
+            exp_annotations:
+              source_timestamp_seconds: "120.000"
+
+  - name: only A stops while B is received on another replica
+    interval: 1m
+    input_series:
+      - series: 'prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{job="central-alloy",component_id="prometheus.alertmanager.heartbeat.networks",instance="central-1",source_network="network-a"}'
+        # A stops after minute 1. At minute 11 a queued, ten-minute-old probe
+        # advances source time by one second. At minute 12 a live probe arrives.
+        values: '0 60+0x9 61 720'
+      - series: 'prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{job="central-alloy",component_id="prometheus.alertmanager.heartbeat.networks",instance="central-2",source_network="network-a"}'
+        values: '0+0x12'
+      - series: 'prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{job="central-alloy",component_id="prometheus.alertmanager.heartbeat.networks",instance="central-1",source_network="network-b"}'
+        values: '0+0x12'
+      - series: 'prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{job="central-alloy",component_id="prometheus.alertmanager.heartbeat.networks",instance="central-2",source_network="network-b"}'
+        values: '0+60x12'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: PipelineHeartbeatStale
+        exp_alerts: []
+      - eval_time: 9m30s
+        alertname: PipelineHeartbeatStale
+        exp_alerts:
+          - exp_labels: {source_network: network-a, severity: warning}
+            exp_annotations: {summary: Central Alloy has no fresh heartbeat from network-a}
+      - eval_time: 11m
+        alertname: PipelineHeartbeatStale
+        exp_alerts:
+          - exp_labels: {source_network: network-a, severity: warning}
+            exp_annotations: {summary: Central Alloy has no fresh heartbeat from network-a}
+      - eval_time: 12m
+        alertname: PipelineHeartbeatStale
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: PipelineHeartbeatObserverMissing
+        exp_alerts: []
+
+  - name: never-seen expected networks get a startup grace period
+    interval: 30s
+    input_series:
+      - series: 'prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{job="central-alloy",component_id="prometheus.alertmanager.heartbeat.networks",instance="central-1",source_network="network-b"}'
+        values: '0+0x8'
+    alert_rule_test:
+      - eval_time: 2m30s
+        alertname: PipelineHeartbeatStale
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: PipelineHeartbeatStale
+        exp_alerts:
+          - exp_labels: {source_network: network-b, severity: warning}
+            exp_annotations: {summary: Central Alloy has no fresh heartbeat from network-b}
+
+  - name: successful pod scrapes with missing observer metrics
+    interval: 1m
+    input_series:
+      - series: 'up{job="central-alloy",instance="central-1"}'
+        values: '1+0x4'
+      - series: 'prometheus_alertmanager_heartbeat_last_source_timestamp_seconds{job="central-alloy",component_id="prometheus.alertmanager.heartbeat.networks",instance="central-1",source_network="network-a"}'
+        values: '0 stale'
+    alert_rule_test:
+      - eval_time: 2m30s
+        alertname: PipelineHeartbeatObserverMissing
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: PipelineHeartbeatObserverMissing
+        exp_alerts:
+          - exp_labels: {job: central-alloy, component_id: prometheus.alertmanager.heartbeat.networks, severity: critical}
+            exp_annotations: {summary: No central Alloy heartbeat observer is being scraped}
+      - eval_time: 3m
+        alertname: PipelineHeartbeatStale
+        exp_alerts: []
+
+  - name: no central scrape targets
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: PipelineHeartbeatObserverMissing
+        exp_alerts:
+          - exp_labels: {job: central-alloy, component_id: prometheus.alertmanager.heartbeat.networks, severity: critical}
+            exp_annotations: {summary: No central Alloy heartbeat observer is being scraped}

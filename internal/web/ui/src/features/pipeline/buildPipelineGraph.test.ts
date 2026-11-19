@@ -54,23 +54,29 @@ describe('Alertmanager graph', () => {
     ]);
   });
 
-  it('shows the receiver boundary in processing order', () => {
+  it('shows the decoder feeding a terminal heartbeat observer and a relabel-to-write branch', () => {
     const write = component('prometheus.alertmanager.write', 'destination');
+    const relabel = component('prometheus.alertmanager.relabel', 'ordinary', [write.localID]);
+    const heartbeat = component('prometheus.alertmanager.heartbeat', 'networks');
     const decoder = component('prometheus.alertmanager.decode', 'boundary', [
       'prometheus.alertmanager.http_receive.incoming',
     ]);
-    const receive = component('prometheus.alertmanager.http_receive', 'incoming', [write.localID]);
-    receive.referencesTo = [decoder.localID, write.localID];
+    const receive = component('prometheus.alertmanager.http_receive', 'incoming', [heartbeat.localID, relabel.localID]);
+    receive.referencesTo = [decoder.localID, heartbeat.localID, relabel.localID];
 
-    const graph = buildPipelineGraph([write, decoder, receive]);
+    const graph = buildPipelineGraph([write, relabel, heartbeat, decoder, receive]);
     expect(graph.edges.map(({ source, target }) => ({ source, target }))).toEqual([
-      { source: decoder.localID, target: write.localID },
+      { source: relabel.localID, target: write.localID },
+      { source: decoder.localID, target: heartbeat.localID },
+      { source: decoder.localID, target: relabel.localID },
       { source: receive.localID, target: decoder.localID },
     ]);
     for (const edge of graph.edges) expect(edge.signals).toEqual([SignalKind.Other]);
     for (const node of graph.nodes) expect(node.signals).toEqual([SignalKind.Other]);
     expect(graph.nodes.map(({ id, stage }) => ({ id, stage }))).toEqual([
       { id: write.localID, stage: PipelineStage.Send },
+      { id: relabel.localID, stage: PipelineStage.Process },
+      { id: heartbeat.localID, stage: PipelineStage.Process },
       { id: decoder.localID, stage: PipelineStage.Process },
       { id: receive.localID, stage: PipelineStage.Collect },
     ]);
