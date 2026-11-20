@@ -100,6 +100,9 @@ func TestLoader(t *testing.T) {
 	t.Run("Alert receiver fanout data flow", func(t *testing.T) {
 		opts := newLoaderOptions()
 		opts.ComponentGlobals.EnableCommunityComps = true
+		opts.ComponentGlobals.GetServiceData = func(string) (any, error) {
+			return nil, errors.New("no services configured in this loader test")
+		}
 		l, err := controller.NewLoader(opts)
 		require.NoError(t, err)
 		config := `
