@@ -6,6 +6,10 @@ This extension allows you to run a Default Engine pipeline set up with Alloy con
 
 If the Alloy configuration fails to load for whatever reason, the extension continues retrying at most every 15 seconds.
 
+## Stability
+
+This extension is currently marked as **experimental** stability level. The API and behavior may change in future releases.
+
 ## Configuration
 
 The extension accepts the following configuration fields:
@@ -76,10 +80,6 @@ The `remotecfg` Alloy configuration block can't be used with the alloyengine ext
 
 The compiled UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to serve the web UI. See [Build with the UI embedded](#build-with-the-ui-embedded) for details.
 
-## Stability
-
-This extension is currently marked as **experimental** stability level. The API and behavior may change in future releases.
-
 ## Include `alloyengine` extension in an OCB distribution
 
 You can include the `alloyengine` extension in a custom OpenTelemetry Collector distribution built with [OpenTelemetry Collector Builder (OCB)](https://github.com/open-telemetry/opentelemetry-collector/tree/main/cmd/builder) by following the steps below.
@@ -120,6 +120,8 @@ extensions:
 ```
 
 Replace `<ALLOY_VERSION>` with the version you chose.
+
+The `github.com/grafana/alloy/extension/alloyengine` package includes every native Alloy component.
 
 ### Include replace directives from Alloy
 

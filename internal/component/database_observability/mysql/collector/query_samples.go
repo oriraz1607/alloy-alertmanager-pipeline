@@ -102,6 +102,7 @@ type QuerySamplesArguments struct {
 	EngineVersion                 semver.Version
 	CollectInterval               time.Duration
 	ExcludeSchemas                []string
+	IncludeSchemas                []string
 	EntryHandler                  loki.EntryHandler
 	Registry                      *prometheus.Registry
 	DisableQueryRedaction         bool
@@ -119,6 +120,7 @@ type QuerySamples struct {
 	engineVersion                 semver.Version
 	collectInterval               time.Duration
 	excludeSchemas                []string
+	includeSchemas                []string
 	entryHandler                  loki.EntryHandler
 	registry                      *prometheus.Registry
 	disableQueryRedaction         bool
@@ -145,6 +147,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		engineVersion:                 args.EngineVersion,
 		collectInterval:               args.CollectInterval,
 		excludeSchemas:                args.ExcludeSchemas,
+		includeSchemas:                args.IncludeSchemas,
 		entryHandler:                  args.EntryHandler,
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		autoEnableSetupConsumers:      args.AutoEnableSetupConsumers,
@@ -275,7 +278,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
 
-	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
+	schemaFilterClause := buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "statements.CURRENT_SCHEMA")
 
 	var waitDurationClause, nestedWaitDurationClause string
 	if c.waitEventMinDuration > 0 {
@@ -291,12 +294,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
@@ -424,16 +427,16 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		traceParent := database_observability.TryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" mysql_errno="%d" returned_sqlstate="%s" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
-			row.Schema.String, row.User.String, row.Host.String, row.ThreadID.String,
-			row.StatementEventID.String, row.StatementEndEventID.String,
-			row.Digest.String,
+			`schema=%s user=%s client_host=%s thread_id=%s event_id=%s end_event_id=%s digest=%s rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" mysql_errno="%d" returned_sqlstate=%s max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			strconv.Quote(row.Schema.String), strconv.Quote(row.User.String), strconv.Quote(row.Host.String), strconv.Quote(row.ThreadID.String),
+			strconv.Quote(row.StatementEventID.String), strconv.Quote(row.StatementEndEventID.String),
+			strconv.Quote(row.Digest.String),
 			row.RowsExamined,
 			row.RowsSent,
 			row.RowsAffected,
 			row.Errors,
 			row.MysqlErrno.Int64,
-			row.ReturnedSQLState.String,
+			strconv.Quote(row.ReturnedSQLState.String),
 			row.MaxControlledMemory,
 			row.MaxTotalMemory,
 			cpuTime,
@@ -444,12 +447,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` traceparent=%s`, strconv.Quote(traceParent))
 		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
-			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+			logMessage += fmt.Sprintf(` sql_text=%s`, strconv.Quote(row.SQLText.String))
 		}
 		// message_text can embed literal values (e.g. a duplicate key value), so
 		// it is only emitted when query redaction is disabled, like sql_text.
 		if c.disableQueryRedaction && row.MessageText.Valid {
-			logMessage += fmt.Sprintf(` message_text="%s"`, row.MessageText.String)
+			logMessage += fmt.Sprintf(` message_text=%s`, strconv.Quote(row.MessageText.String))
 		}
 
 		if lastThreadIDLogged != row.ThreadID.String || lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
@@ -490,19 +493,19 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 			if c.enablePreClassifiedWaitEvents {
 				waitV2LogMessage := fmt.Sprintf(
-					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_event_type="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-					row.Schema.String,
-					row.User.String,
-					row.Host.String,
-					row.ThreadID.String,
-					row.Digest.String,
-					row.StatementEventID.String,
-					eventID,
-					endEventID,
-					eventName,
-					classifyMySQLWaitEventType(eventName),
-					objectName,
-					objectType,
+					`schema=%s user=%s client_host=%s thread_id=%s digest=%s event_id=%s wait_event_id=%s wait_end_event_id=%s wait_event_name=%s wait_event_type=%s wait_object_name=%s wait_object_type=%s wait_time="%fms"`,
+					strconv.Quote(row.Schema.String),
+					strconv.Quote(row.User.String),
+					strconv.Quote(row.Host.String),
+					strconv.Quote(row.ThreadID.String),
+					strconv.Quote(row.Digest.String),
+					strconv.Quote(row.StatementEventID.String),
+					strconv.Quote(eventID),
+					strconv.Quote(endEventID),
+					strconv.Quote(eventName),
+					strconv.Quote(classifyMySQLWaitEventType(eventName)),
+					strconv.Quote(objectName),
+					strconv.Quote(objectType),
 					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
@@ -517,18 +520,18 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				}
 			} else {
 				waitLogMessage := fmt.Sprintf(
-					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-					row.Schema.String,
-					row.User.String,
-					row.Host.String,
-					row.ThreadID.String,
-					row.Digest.String,
-					row.StatementEventID.String,
-					eventID,
-					endEventID,
-					eventName,
-					objectName,
-					objectType,
+					`schema=%s user=%s client_host=%s thread_id=%s digest=%s event_id=%s wait_event_id=%s wait_end_event_id=%s wait_event_name=%s wait_object_name=%s wait_object_type=%s wait_time="%fms"`,
+					strconv.Quote(row.Schema.String),
+					strconv.Quote(row.User.String),
+					strconv.Quote(row.Host.String),
+					strconv.Quote(row.ThreadID.String),
+					strconv.Quote(row.Digest.String),
+					strconv.Quote(row.StatementEventID.String),
+					strconv.Quote(eventID),
+					strconv.Quote(endEventID),
+					strconv.Quote(eventName),
+					strconv.Quote(objectName),
+					strconv.Quote(objectType),
 					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(

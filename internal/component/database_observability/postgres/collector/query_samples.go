@@ -101,7 +101,9 @@ type QuerySamplesArguments struct {
 	DB                            *sql.DB
 	CollectInterval               time.Duration
 	ExcludeDatabases              []string
+	IncludeDatabases              []string
 	ExcludeUsers                  []string
+	IncludeUsers                  []string
 	EntryHandler                  loki.EntryHandler
 	Logger                        *slog.Logger
 	DisableQueryRedaction         bool
@@ -113,7 +115,9 @@ type QuerySamples struct {
 	dbConnection                  *sql.DB
 	collectInterval               time.Duration
 	excludeDatabases              []string
+	includeDatabases              []string
 	excludeUsers                  []string
+	includeUsers                  []string
 	entryHandler                  loki.EntryHandler
 	disableQueryRedaction         bool
 	excludeCurrentUser            bool
@@ -229,7 +233,9 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		dbConnection:                  args.DB,
 		collectInterval:               args.CollectInterval,
 		excludeDatabases:              args.ExcludeDatabases,
+		includeDatabases:              args.IncludeDatabases,
 		excludeUsers:                  args.ExcludeUsers,
+		includeUsers:                  args.IncludeUsers,
 		entryHandler:                  args.EntryHandler,
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
@@ -297,9 +303,10 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		excludeCurrentUserClauseField = excludeCurrentUserClause
 	}
 
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
-	query := fmt.Sprintf(selectPgStatActivity, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
+	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "d.datname")
+	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "s.usename")
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectPgStatActivity, databasesClause, excludeCurrentUserClauseField, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
@@ -545,15 +552,15 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	}
 
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
+		`datname=%s pid="%d" leader_pid="%s" user=%s app=%s client=%s backend_type=%s state=%s xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
+		strconv.Quote(state.LastRow.DatabaseName.String),
 		state.LastRow.PID,
 		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.ApplicationName.String,
-		clientAddr,
-		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
+		strconv.Quote(state.LastRow.Username.String),
+		strconv.Quote(state.LastRow.ApplicationName.String),
+		strconv.Quote(clientAddr),
+		strconv.Quote(state.LastRow.BackendType.String),
+		strconv.Quote(state.LastRow.State.String),
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		xactDuration,
@@ -561,10 +568,10 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		state.LastRow.QueryID.Int64,
 	)
 	if state.LastCpuTime != "" {
-		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+		labels = fmt.Sprintf(`%s cpu_time=%q`, labels, state.LastCpuTime)
 	}
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
-		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+		labels = fmt.Sprintf(`%s query=%s`, labels, strconv.Quote(state.LastRow.Query.String))
 	}
 
 	if state.LastRow.Query.Valid {
@@ -584,19 +591,19 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
+		`datname=%s pid="%d" leader_pid="%s" user=%s backend_type=%s state=%s xid="%d" xmin="%d" wait_time="%s" wait_event_type=%s wait_event=%s wait_event_name=%s blocked_by_pids="%v" queryid="%d"`,
+		strconv.Quote(state.LastRow.DatabaseName.String),
 		state.LastRow.PID,
 		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.BackendType.String,
-		we.LastState,
+		strconv.Quote(state.LastRow.Username.String),
+		strconv.Quote(state.LastRow.BackendType.String),
+		strconv.Quote(we.LastState),
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		waitTime,
-		we.WaitEventType,
-		we.WaitEvent,
-		waitEventFullName,
+		strconv.Quote(we.WaitEventType),
+		strconv.Quote(we.WaitEvent),
+		strconv.Quote(waitEventFullName),
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
@@ -649,19 +656,19 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
+		`datname=%s pid="%d" leader_pid="%s" user=%s backend_type=%s state=%s xid="%d" xmin="%d" wait_time="%s" wait_event_type=%s wait_event=%s wait_event_name=%s blocked_by_pids="%v" queryid="%d"`,
+		strconv.Quote(state.LastRow.DatabaseName.String),
 		state.LastRow.PID,
 		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.BackendType.String,
-		we.LastState,
+		strconv.Quote(state.LastRow.Username.String),
+		strconv.Quote(state.LastRow.BackendType.String),
+		strconv.Quote(we.LastState),
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		waitTime,
-		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
-		we.WaitEvent,
-		waitEventFullName,
+		strconv.Quote(classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent)),
+		strconv.Quote(we.WaitEvent),
+		strconv.Quote(waitEventFullName),
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)

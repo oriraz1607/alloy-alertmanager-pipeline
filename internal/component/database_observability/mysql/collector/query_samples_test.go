@@ -2268,13 +2268,15 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 	// erroredRow represents a statement that failed with a duplicate-key error,
 	// used to verify that the error message text is only emitted when query
 	// redaction is disabled.
+	const erroredSQLText = "insert into users (email) values ('jdoe@example.com') /* \"quoted\" C:\\tmp\\file\nnext line */"
+	const errorMessageText = "Duplicate entry 'jdoe@example.com' for key 'users.email': \"quoted\"\nC:\\tmp\\file"
 	erroredRow := []driver.Value{
 		"some_schema",
 		"890",
 		"123",
 		"234",
 		"some_digest",
-		"insert into users (email) values ('jdoe@example.com')",
+		erroredSQLText,
 		"70000000",
 		"20000000",
 		"5",
@@ -2283,7 +2285,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		"1",     // errors
 		"1062",  // mysql_errno
 		"23000", // returned_sqlstate
-		"Duplicate entry 'jdoe@example.com' for key 'users.email'", // message_text
+		errorMessageText,
 		nil,
 		nil,
 		nil,
@@ -2433,7 +2435,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"insert into users (email) values ('jdoe@example.com')\" message_text=\"Duplicate entry 'jdoe@example.com' for key 'users.email'\"", lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="1" mysql_errno="1062" returned_sqlstate="23000" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="insert into users (email) values ('jdoe@example.com') /* \"quoted\" C:\\tmp\\file\nnext line */" message_text="Duplicate entry 'jdoe@example.com' for key 'users.email': \"quoted\"\nC:\\tmp\\file"`, lokiEntries[0].Line)
 	})
 }
 
@@ -4290,6 +4292,44 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 	}))
 
 	c.fetchQuerySamples(t.Context())
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQuerySamplesIncludeSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewQuerySamples(QuerySamplesArguments{
+		DB:              db,
+		EngineVersion:   latestCompatibleVersion,
+		CollectInterval: time.Millisecond,
+		IncludeSchemas:  []string{"included_schema"},
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	c.timerBookmark = 1e12
+
+	mock.ExpectQuery(selectNowAndUptime).WithoutArgs().
+		WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+
+	customClause := buildSchemaFilterClause(nil, []string{"included_schema"}, "statements.CURRENT_SCHEMA")
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", customClause, "", endOfTimeline)).
+		WithArgs(1e12, 1e12).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
+		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
+		"errors", "object_schema", "object_name", "object_type", "index_name",
+		"lock_time", "digest_text", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "cpu_time", "max_controlled_memory", "max_total_memory",
+	}))
+
+	require.NoError(t, c.fetchQuerySamples(t.Context()))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

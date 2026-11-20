@@ -12,7 +12,7 @@ title: otelcol.receiver.awss3
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.awss3` receives telemetry stored in S3 by the [AWS S3 Exporter](./otelcol.exporter.awss3.md).
+`otelcol.receiver.awss3` receives telemetry stored in S3 by the [AWS S3 Exporter](../otelcol.exporter.awss3/).
 
 {{< admonition type="warning" >}}
 `otelcol.receiver.awss3` is a wrapper over the upstream OpenTelemetry Collector [`awss3`][] receiver.
@@ -150,12 +150,13 @@ The following arguments are supported:
 | `extension` | `capsule(otelcol.Handler)` | Handler from an encoding extension component to use to decode matching S3 objects. |         | yes      |
 | `suffix`    | `string`                   | S3 object key suffix that selects the encoding extension.                         |         | yes      |
 
-Set `extension` to the `handler` exported by a compatible encoding extension component, such as [`otelcol.encoding.text`][] or [`otelcol.encoding.jsonlog`][].
+Set `extension` to the `handler` exported by a compatible encoding extension component, such as [`otelcol.encoding.text`][], [`otelcol.encoding.jsonlog`][], or [`otelcol.encoding.azure`][].
 The `suffix` argument matches the end of the S3 object key.
 Specify the entire suffix, including a leading period when applicable, for example, `.txt`.
 
 [`otelcol.encoding.text`]: ../otelcol.encoding.text/
 [`otelcol.encoding.jsonlog`]: ../otelcol.encoding.jsonlog/
+[`otelcol.encoding.azure`]: ../otelcol.encoding.azure/
 
 ### `output`
 

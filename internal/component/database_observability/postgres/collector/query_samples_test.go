@@ -382,6 +382,24 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 	})
 }
 
+func TestBuildQuerySampleLabelsWithEndEscapesLogfmtValues(t *testing.T) {
+	queryText := "SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"
+	state := &SampleState{
+		LastRow: QuerySamplesInfo{
+			DatabaseName:    sql.NullString{String: `test"db`, Valid: true},
+			Username:        sql.NullString{String: "test\\user", Valid: true},
+			ApplicationName: sql.NullString{String: "line one\nline two", Valid: true},
+			BackendType:     sql.NullString{String: "client backend", Valid: true},
+			State:           sql.NullString{String: "active", Valid: true},
+			Query:           sql.NullString{String: queryText, Valid: true},
+			Now:             time.Now(),
+		},
+	}
+	collector := &QuerySamples{disableQueryRedaction: true}
+
+	require.Equal(t, `datname="test\"db" pid="0" leader_pid="" user="test\\user" app="line one\nline two" client="" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="" query_time="" queryid="0" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"`, collector.buildQuerySampleLabelsWithEnd(state, sql.NullTime{}))
+}
+
 // TestQuerySamples_FetchQuerySamples_ErrorCases tests scenarios where errors occur
 // and no Loki entries are produced.
 func TestQuerySamples_FetchQuerySamples_ErrorCases(t *testing.T) {
@@ -1411,6 +1429,44 @@ func TestQuerySamples_ExcludeDatabases(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return mock.ExpectationsWereMet() == nil
 	}, 5*time.Second, 100*time.Millisecond)
+}
+
+func TestQuerySamples_IncludeDatabasesAndUsers(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+		DB:               db,
+		CollectInterval:  time.Millisecond,
+		IncludeDatabases: []string{"included_db"},
+		IncludeUsers:     []string{"included_user"},
+		EntryHandler:     lokiClient,
+		Logger:           logger.Slog(),
+	})
+	require.NoError(t, err)
+
+	expectedDatabasesClause := buildDatabaseFilterClause(nil, []string{"included_db"}, "d.datname")
+	expectedUsersClause := buildUserFilterClause(nil, []string{"included_user"}, "s.usename")
+	expectedQuery := fmt.Sprintf(selectPgStatActivity, expectedDatabasesClause, "", expectedUsersClause)
+
+	mock.ExpectQuery(expectedQuery).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns))
+
+	require.NoError(t, sampleCollector.fetchQuerySample(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestQuerySamples_ExcludeUsers(t *testing.T) {
